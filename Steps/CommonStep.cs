@@ -22,9 +22,7 @@ public class CommonStep
     [Given(@"I navigate to ultimate automation website (.*)")]
     public async Task GivenINavigateToUltimateAutomation(string env)
     {
-        await _common.GivenINavigateTo(
-            
-            $"https://courses.ultimate{env}.com/users/sign_in");
+        await _common.GivenINavigateTo($"https://courses.ultimate{env}.com/users/sign_in");
     }
 
     [Then(@"assert sign in page has header ""(.*)""")]
