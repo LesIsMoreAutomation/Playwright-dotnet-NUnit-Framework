@@ -7,7 +7,14 @@ e.g MS Visual Studio or Rider
 
 Then build the project to download all dependencies required
 
-One everything is updated. Run 
+One everything is updated. 
+
+Run Task 2 Web Automation.feature
+
+Once test is done executing.
+
+Run this to generate HTML: livingdoc test-assembly SpecFlowPlaywrightNew.dll -t TestExecution.json
+
 
 
 
