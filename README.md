@@ -13,7 +13,7 @@ Run Task 2 Web Automation.feature
 
 Once test is done executing.
 
-Run this to generate HTML: livingdoc test-assembly SpecFlowPlaywrightNew.dll -t TestExecution.json
+Run this to generate HTML: livingdoc test-assembly SpecFlowWithPlaywright.dll -t TestExecution.json
 
 
 
