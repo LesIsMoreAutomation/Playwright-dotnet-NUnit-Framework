@@ -36,21 +36,37 @@ namespace SpecFlowWithPlaywright.Hooks
         }
 
         [BeforeScenario()]
-        public async Task createBrowser()
-        {
-            playwright = await Playwright.CreateAsync();
-            BrowserTypeLaunchOptions typeLaunchOptions = new BrowserTypeLaunchOptions{ Headless = false };
-            browser = await playwright.Chromium.LaunchAsync(typeLaunchOptions);
-            context = await browser.NewContextAsync();
-            await context.Tracing.StartAsync(new()
-            {
-                Screenshots = true,
-                Snapshots = true,
-                Sources = true
-            });
-            page = await context.NewPageAsync();
-            _objectContainer.RegisterInstanceAs(page);
-            
-        }
-    }
-}
+         public async Task<IPage> createBrowser()
+                {
+                    playwright = await Playwright.CreateAsync();
+                    BrowserTypeLaunchOptions typeLaunchOptions = new BrowserTypeLaunchOptions{ Headless = false, Timeout = 60000, Channel = "chromium" };
+                    browser = await playwright.Chromium.LaunchAsync(typeLaunchOptions);
+                    context = await browser.NewContextAsync();
+                    bool enableTracing = false;
+                    await context.Tracing.StartAsync(new()
+                    {
+                        Screenshots = enableTracing,
+                        Snapshots = enableTracing,
+                        Sources = enableTracing
+                    });
+                    bool recordVideo = true;
+                    if (recordVideo)
+                    {
+                        var scenarioName = _scenarioContext.ScenarioInfo.Title.Replace(" ", "_");
+                        var date = DateTime.UtcNow.ToString("yyyy-MM-dd_HH-mm-ss");
+                        var browserNewPageOptions = new BrowserNewPageOptions
+                        {
+                            RecordVideoDir = $"../../../videos/{scenarioName}",
+                            RecordVideoSize = new RecordVideoSize { Width = 1024, Height = 768 }
+                        };
+                        page = await browser.NewPageAsync(browserNewPageOptions);
+                    }
+                    else
+                    {
+                        page = await browser.NewPageAsync();  
+                    }
+                    _objectContainer.RegisterInstanceAs(page);
+                    return page;
+                }
+         }
+} 
