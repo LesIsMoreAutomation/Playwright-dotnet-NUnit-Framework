@@ -30,4 +30,13 @@
       <UpToDateCheckBuild Remove="Features\TaskSplittingTestCases\OneIPHL with PBA.feature.cs" />
     </ItemGroup>
 
+    <ItemGroup>
+      <Compile Update="Features\Ultimate Web\ultimate automation.feature.cs">
+        <DependentUpon>ultimate automation.feature</DependentUpon>
+        <AutoGen>true</AutoGen>
+        <DesignTime>true</DesignTime>
+        <Visible>true</Visible>
+      </Compile>
+    </ItemGroup>
+
 </Project>
