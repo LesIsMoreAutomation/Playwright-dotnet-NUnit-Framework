@@ -54,10 +54,14 @@ class ElectronApplication extends _channelOwner.ChannelOwner {
     this._context = void 0;
     this._windows = new Set();
     this._timeoutSettings = new _timeoutSettings.TimeoutSettings();
+    this._isClosed = false;
     this._context = _browserContext.BrowserContext.from(initializer.context);
     for (const page of this._context._pages) this._onPage(page);
     this._context.on(_events.Events.BrowserContext.Page, page => this._onPage(page));
-    this._channel.on('close', () => this.emit(_events.Events.ElectronApplication.Close));
+    this._channel.on('close', () => {
+      this._isClosed = true;
+      this.emit(_events.Events.ElectronApplication.Close);
+    });
   }
   process() {
     return this._toImpl().process();
@@ -71,15 +75,16 @@ class ElectronApplication extends _channelOwner.ChannelOwner {
     // TODO: add ElectronPage class inherting from Page.
     return [...this._windows];
   }
-  async firstWindow() {
+  async firstWindow(options) {
     if (this._windows.size) return this._windows.values().next().value;
-    return this.waitForEvent('window');
+    return this.waitForEvent('window', options);
   }
   context() {
     return this._context;
   }
   async close() {
-    await this._channel.close();
+    if (this._isClosed) return;
+    await this._channel.close().catch(() => {});
   }
   async waitForEvent(event, optionsOrPredicate = {}) {
     return this._wrapApiCall(async () => {

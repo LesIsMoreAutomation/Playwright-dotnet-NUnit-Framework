@@ -10,6 +10,7 @@ exports.evaluateExpressionAndWaitForSignals = evaluateExpressionAndWaitForSignal
 exports.isJavaScriptErrorInEvaluate = isJavaScriptErrorInEvaluate;
 exports.normalizeEvaluationExpression = normalizeEvaluationExpression;
 exports.parseUnserializableValue = parseUnserializableValue;
+exports.sparseArrayToString = sparseArrayToString;
 var utilityScriptSource = _interopRequireWildcard(require("../generated/utilityScriptSource"));
 var _utilityScriptSerializers = require("./isomorphic/utilityScriptSerializers");
 var _instrumentation = require("./instrumentation");
@@ -33,20 +34,20 @@ function _interopRequireWildcard(obj, nodeInterop) { if (!nodeInterop && obj && 
  */
 
 class ExecutionContext extends _instrumentation.SdkObject {
-  constructor(parent, delegate) {
+  constructor(parent, delegate, worldNameForTest) {
     super(parent, 'execution-context');
     this._delegate = void 0;
     this._utilityScriptPromise = void 0;
-    this._destroyedPromise = new _manualPromise.ManualPromise();
+    this._contextDestroyedRace = new _manualPromise.ScopedRace();
+    this.worldNameForTest = void 0;
+    this.worldNameForTest = worldNameForTest;
     this._delegate = delegate;
   }
   contextDestroyed(error) {
-    this._destroyedPromise.resolve(error);
+    this._contextDestroyedRace.scopeClosed(error);
   }
-  _raceAgainstContextDestroyed(promise) {
-    return Promise.race([this._destroyedPromise.then(e => {
-      throw e;
-    }), promise]);
+  async _raceAgainstContextDestroyed(promise) {
+    return this._contextDestroyedRace.race(promise);
   }
   rawEvaluateJSON(expression) {
     return this._raceAgainstContextDestroyed(this._delegate.rawEvaluateJSON(expression));
@@ -81,11 +82,14 @@ class ExecutionContext extends _instrumentation.SdkObject {
       (() => {
         const module = {};
         ${utilityScriptSource.source}
-        return new module.exports();
+        return new (module.exports.UtilityScript())();
       })();`;
-      this._utilityScriptPromise = this._raceAgainstContextDestroyed(this._delegate.rawEvaluateHandle(source).then(objectId => new JSHandle(this, 'object', undefined, objectId)));
+      this._utilityScriptPromise = this._raceAgainstContextDestroyed(this._delegate.rawEvaluateHandle(source).then(objectId => new JSHandle(this, 'object', 'UtilityScript', objectId)));
     }
     return this._utilityScriptPromise;
+  }
+  async objectCount(objectId) {
+    return this._delegate.objectCount(objectId);
   }
   async doSlowMo() {
     // overridden in FrameExecutionContext
@@ -95,6 +99,7 @@ exports.ExecutionContext = ExecutionContext;
 class JSHandle extends _instrumentation.SdkObject {
   constructor(context, type, preview, objectId, value) {
     super(context, 'handle');
+    this.__jshandle = true;
     this._context = void 0;
     this._disposed = false;
     this._objectId = void 0;
@@ -107,6 +112,7 @@ class JSHandle extends _instrumentation.SdkObject {
     this._value = value;
     this._objectType = type;
     this._preview = this._objectId ? preview || `JSHandle@${this._objectType}` : String(value);
+    if (this._objectId && globalThis.leakedJSHandles) globalThis.leakedJSHandles.set(this, new Error('Leaked JSHandle'));
   }
   callFunctionNoReply(func, arg) {
     this._context.rawCallFunctionNoReply(func, this, arg);
@@ -154,7 +160,10 @@ class JSHandle extends _instrumentation.SdkObject {
   dispose() {
     if (this._disposed) return;
     this._disposed = true;
-    if (this._objectId) this._context.releaseHandle(this._objectId).catch(e => {});
+    if (this._objectId) {
+      this._context.releaseHandle(this._objectId).catch(e => {});
+      if (globalThis.leakedJSHandles) globalThis.leakedJSHandles.delete(this);
+    }
   }
   toString() {
     return this._preview;
@@ -165,18 +174,28 @@ class JSHandle extends _instrumentation.SdkObject {
   preview() {
     return this._preview;
   }
+  worldNameForTest() {
+    return this._context.worldNameForTest;
+  }
   _setPreview(preview) {
     this._preview = preview;
     if (this._previewCallback) this._previewCallback(preview);
   }
+  async objectCount() {
+    if (!this._objectId) throw new Error('Can only count objects for a handle that points to the constructor prototype');
+    return this._context.objectCount(this._objectId);
+  }
 }
 exports.JSHandle = JSHandle;
 async function evaluate(context, returnByValue, pageFunction, ...args) {
-  return evaluateExpression(context, returnByValue, String(pageFunction), typeof pageFunction === 'function', ...args);
+  return evaluateExpression(context, String(pageFunction), {
+    returnByValue,
+    isFunction: typeof pageFunction === 'function'
+  }, ...args);
 }
-async function evaluateExpression(context, returnByValue, expression, isFunction, ...args) {
+async function evaluateExpression(context, expression, options, ...args) {
   const utilityScript = await context.utilityScript();
-  expression = normalizeEvaluationExpression(expression, isFunction);
+  expression = normalizeEvaluationExpression(expression, options.isFunction);
   const handles = [];
   const toDispose = [];
   const pushHandle = handle => {
@@ -209,16 +228,19 @@ async function evaluateExpression(context, returnByValue, expression, isFunction
   }
 
   // See UtilityScript for arguments.
-  const utilityScriptValues = [isFunction, returnByValue, expression, args.length, ...args];
+  const utilityScriptValues = [options.isFunction, options.returnByValue, options.exposeUtilityScript, expression, args.length, ...args];
   const script = `(utilityScript, ...args) => utilityScript.evaluate(...args)`;
   try {
-    return await context.evaluateWithArguments(script, returnByValue, utilityScript, utilityScriptValues, utilityScriptObjectIds);
+    return await context.evaluateWithArguments(script, options.returnByValue || false, utilityScript, utilityScriptValues, utilityScriptObjectIds);
   } finally {
     toDispose.map(handlePromise => handlePromise.then(handle => handle.dispose()));
   }
 }
 async function evaluateExpressionAndWaitForSignals(context, returnByValue, expression, isFunction, ...args) {
-  return await context.waitForSignalsCreatedBy(() => evaluateExpression(context, returnByValue, expression, isFunction, ...args));
+  return await context.waitForSignalsCreatedBy(() => evaluateExpression(context, expression, {
+    returnByValue,
+    isFunction
+  }, ...args));
 }
 function parseUnserializableValue(unserializableValue) {
   if (unserializableValue === 'NaN') return NaN;
@@ -252,4 +274,31 @@ class JavaScriptErrorInEvaluate extends Error {}
 exports.JavaScriptErrorInEvaluate = JavaScriptErrorInEvaluate;
 function isJavaScriptErrorInEvaluate(error) {
   return error instanceof JavaScriptErrorInEvaluate;
+}
+function sparseArrayToString(entries) {
+  const arrayEntries = [];
+  for (const {
+    name,
+    value
+  } of entries) {
+    const index = +name;
+    if (isNaN(index) || index < 0) continue;
+    arrayEntries.push({
+      index,
+      value
+    });
+  }
+  arrayEntries.sort((a, b) => a.index - b.index);
+  let lastIndex = -1;
+  const tokens = [];
+  for (const {
+    index,
+    value
+  } of arrayEntries) {
+    const emptyItems = index - lastIndex - 1;
+    if (emptyItems === 1) tokens.push(`empty`);else if (emptyItems > 1) tokens.push(`empty x ${emptyItems}`);
+    tokens.push(String(value));
+    lastIndex = index;
+  }
+  return '[' + tokens.join(', ') + ']';
 }

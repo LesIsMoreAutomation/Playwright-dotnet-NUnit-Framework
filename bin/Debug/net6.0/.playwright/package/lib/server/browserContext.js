@@ -49,6 +49,7 @@ class BrowserContext extends _instrumentation.SdkObject {
     super(browser, 'browser-context');
     this._timeoutSettings = new _timeoutSettings.TimeoutSettings();
     this._pageBindings = new Map();
+    this._activeProgressControllers = new Set();
     this._options = void 0;
     this._requestInterceptor = void 0;
     this._isPersistentContext = void 0;
@@ -69,6 +70,7 @@ class BrowserContext extends _instrumentation.SdkObject {
     this._settingStorageState = false;
     this.initScripts = [];
     this._routesInFlight = new Set();
+    this._debugger = void 0;
     this.attribution.context = this;
     this._browser = browser;
     this._options = options;
@@ -84,7 +86,6 @@ class BrowserContext extends _instrumentation.SdkObject {
   }
   setSelectors(selectors) {
     this._selectors = selectors;
-    for (const page of this.pages()) page.selectors = selectors;
   }
   selectors() {
     return this._selectors || this._browser.options.selectors;
@@ -92,7 +93,7 @@ class BrowserContext extends _instrumentation.SdkObject {
   async _initialize() {
     if (this.attribution.isInternalPlaywright) return;
     // Debugger will pause execution upon page.pause in headed mode.
-    const contextDebugger = new _debugger.Debugger(this);
+    this._debugger = new _debugger.Debugger(this);
 
     // When PWDEBUG=1, show inspector for each context.
     if ((0, _utils.debugMode)() === 'inspector') await _recorder.Recorder.show(this, {
@@ -100,13 +101,16 @@ class BrowserContext extends _instrumentation.SdkObject {
     });
 
     // When paused, show inspector.
-    if (contextDebugger.isPaused()) _recorder.Recorder.showInspector(this);
-    contextDebugger.on(_debugger.Debugger.Events.PausedStateChanged, () => {
+    if (this._debugger.isPaused()) _recorder.Recorder.showInspector(this);
+    this._debugger.on(_debugger.Debugger.Events.PausedStateChanged, () => {
       _recorder.Recorder.showInspector(this);
     });
     if ((0, _utils.debugMode)() === 'console') await this.extendInjectedScript(consoleApiSource.source);
-    if (this._options.serviceWorkers === 'block') await this.addInitScript(`\nnavigator.serviceWorker.register = () => { console.warn('Service Worker registration blocked by Playwright'); };\n`);
+    if (this._options.serviceWorkers === 'block') await this.addInitScript(`\nnavigator.serviceWorker.register = async () => { console.warn('Service Worker registration blocked by Playwright'); };\n`);
     if (this._options.permissions) await this.grantPermissions(this._options.permissions);
+  }
+  debugger() {
+    return this._debugger;
   }
   async _ensureVideosPath() {
     if (this._options.recordVideo) await (0, _fileUtils.mkdirIfNeeded)(_path.default.join(this._options.recordVideo.dir, 'dummy'));
@@ -114,6 +118,9 @@ class BrowserContext extends _instrumentation.SdkObject {
   canResetForReuse() {
     if (this._closedStatus !== 'open') return false;
     return true;
+  }
+  async stopPendingOperations() {
+    for (const controller of this._activeProgressControllers) controller.abort(new Error(`Context was reset for reuse.`));
   }
   static reusableContextHash(params) {
     const paramsCopy = {
@@ -130,6 +137,7 @@ class BrowserContext extends _instrumentation.SdkObject {
     var _page, _page2, _page3, _page4, _page5;
     this.setDefaultNavigationTimeout(undefined);
     this.setDefaultTimeout(undefined);
+    this.tracing.resetForReuse();
     if (params) {
       for (const key of paramsThatAllowContextReuse) this._options[key] = params[key];
     }
@@ -161,6 +169,7 @@ class BrowserContext extends _instrumentation.SdkObject {
     await this.setGeolocation(this._options.geolocation);
     await this.setOffline(!!this._options.offline);
     await this.setUserAgent(this._options.userAgent);
+    await this.clearCache();
     await this._resetCookies();
     await ((_page5 = page) === null || _page5 === void 0 ? void 0 : _page5.resetForReuse(metadata));
   }
@@ -364,8 +373,10 @@ class BrowserContext extends _instrumentation.SdkObject {
       const page = await this.newPage(internalMetadata);
       await page._setServerRequestInterceptor(handler => {
         handler.fulfill({
-          body: '<html></html>'
+          body: '<html></html>',
+          requestUrl: handler.request().url()
         }).catch(() => {});
+        return true;
       });
       for (const origin of this._origins) {
         const originStorage = {
@@ -394,8 +405,10 @@ class BrowserContext extends _instrumentation.SdkObject {
     page = page || (await this.newPage(internalMetadata));
     await page._setServerRequestInterceptor(handler => {
       handler.fulfill({
-        body: '<html></html>'
+        body: '<html></html>',
+        requestUrl: handler.request().url()
       }).catch(() => {});
+      return true;
     });
     for (const origin of new Set([...oldOrigins, ...newOrigins.keys()])) {
       const frame = page.mainFrame();
@@ -424,8 +437,10 @@ class BrowserContext extends _instrumentation.SdkObject {
         const page = await this.newPage(internalMetadata);
         await page._setServerRequestInterceptor(handler => {
           handler.fulfill({
-            body: '<html></html>'
+            body: '<html></html>',
+            requestUrl: handler.request().url()
           }).catch(() => {});
+          return true;
         });
         for (const originState of state.origins) {
           const frame = page.mainFrame();
@@ -473,7 +488,9 @@ class BrowserContext extends _instrumentation.SdkObject {
 }
 exports.BrowserContext = BrowserContext;
 BrowserContext.Events = {
+  Console: 'console',
   Close: 'close',
+  Dialog: 'dialog',
   Page: 'page',
   Request: 'request',
   Response: 'response',
@@ -489,7 +506,7 @@ function assertBrowserContextIsNotOwned(context) {
 }
 function validateBrowserContextOptions(options, browserOptions) {
   if (options.noDefaultViewport && options.deviceScaleFactor !== undefined) throw new Error(`"deviceScaleFactor" option is not supported with null "viewport"`);
-  if (options.noDefaultViewport && options.isMobile !== undefined) throw new Error(`"isMobile" option is not supported with null "viewport"`);
+  if (options.noDefaultViewport && !!options.isMobile) throw new Error(`"isMobile" option is not supported with null "viewport"`);
   if (options.acceptDownloads === undefined) options.acceptDownloads = true;
   if (!options.viewport && !options.noDefaultViewport) options.viewport = {
     width: 1280,
@@ -519,7 +536,6 @@ function validateBrowserContextOptions(options, browserOptions) {
     if (!browserOptions.proxy && browserOptions.isChromium && os.platform() === 'win32') throw new Error(`Browser needs to be launched with the global proxy. If all contexts override the proxy, global proxy will be never used and can be any string, for example "launch({ proxy: { server: 'http://per-context' } })"`);
     options.proxy = normalizeProxySettings(options.proxy);
   }
-  if ((0, _utils.debugMode)() === 'inspector') options.bypassCSP = true;
   verifyGeolocation(options.geolocation);
 }
 function verifyGeolocation(geolocation) {

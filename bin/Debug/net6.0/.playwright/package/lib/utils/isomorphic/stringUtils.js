@@ -8,6 +8,7 @@ exports.escapeForAttributeSelector = escapeForAttributeSelector;
 exports.escapeForTextSelector = escapeForTextSelector;
 exports.escapeWithQuotes = escapeWithQuotes;
 exports.isString = isString;
+exports.normalizeWhiteSpace = normalizeWhiteSpace;
 exports.toSnakeCase = toSnakeCase;
 exports.toTitleCase = toTitleCase;
 /**
@@ -59,6 +60,9 @@ function cssEscapeOne(s, i) {
   if (c >= 0x0080 || c === 0x002d || c === 0x005f || c >= 0x0030 && c <= 0x0039 || c >= 0x0041 && c <= 0x005a || c >= 0x0061 && c <= 0x007a) return s.charAt(i);
   return '\\' + s.charAt(i);
 }
+function normalizeWhiteSpace(text) {
+  return text.replace(/\u200b/g, '').trim().replace(/\s+/g, ' ');
+}
 function escapeForTextSelector(text, exact) {
   if (typeof text !== 'string') return String(text);
   return `${JSON.stringify(text)}${exact ? 's' : 'i'}`;
@@ -68,5 +72,5 @@ function escapeForAttributeSelector(value, exact) {
   //   cssEscape(value).replace(/\\ /g, ' ')
   // However, our attribute selectors do not conform to CSS parsing spec,
   // so we escape them differently.
-  return `"${value.replace(/["]/g, '\\"')}"${exact ? 's' : 'i'}`;
+  return `"${value.replace(/\\/g, '\\\\').replace(/["]/g, '\\"')}"${exact ? 's' : 'i'}`;
 }

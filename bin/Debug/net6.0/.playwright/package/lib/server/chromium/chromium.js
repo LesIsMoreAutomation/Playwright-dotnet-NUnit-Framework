@@ -15,16 +15,15 @@ var _browserType = require("../browserType");
 var _transport = require("../transport");
 var _crDevTools = require("./crDevTools");
 var _browser = require("../browser");
-var _netUtils = require("../../common/netUtils");
-var _userAgent = require("../../common/userAgent");
+var _network = require("../../utils/network");
+var _userAgent = require("../../utils/userAgent");
+var _ascii = require("../../utils/ascii");
 var _utils = require("../../utils");
 var _fileUtils = require("../../utils/fileUtils");
 var _debugLogger = require("../../common/debugLogger");
 var _progress = require("../progress");
 var _timeoutSettings = require("../../common/timeoutSettings");
 var _helper = require("../helper");
-var _http = _interopRequireDefault(require("http"));
-var _https = _interopRequireDefault(require("https"));
 var _registry = require("../registry");
 var _manualPromise = require("../../utils/manualPromise");
 var _browserContext = require("../browserContext");
@@ -132,7 +131,7 @@ class Chromium extends _browserType.BrowserType {
     return _crBrowser.CRBrowser.connect(transport, options, devtools);
   }
   _rewriteStartupError(error) {
-    if (error.message.includes('Missing X server')) return (0, _stackTrace.rewriteErrorMessage)(error, '\n' + (0, _utils.wrapInASCIIBox)(_browserType.kNoXServerRunningError, 1));
+    if (error.message.includes('Missing X server')) return (0, _stackTrace.rewriteErrorMessage)(error, '\n' + (0, _ascii.wrapInASCIIBox)(_browserType.kNoXServerRunningError, 1));
     // These error messages are taken from Chromium source code as of July, 2020:
     // https://github.com/chromium/chromium/blob/70565f67e79f79e17663ad1337dc6e63ee207ce9/content/browser/zygote_host/zygote_host_impl_linux.cc
     if (!error.message.includes('crbug.com/357670') && !error.message.includes('No usable sandbox!') && !error.message.includes('crbug.com/638180')) return error;
@@ -173,7 +172,7 @@ class Chromium extends _browserType.BrowserType {
       progress.log(`<selenium> ignoring additional capabilities "${process.env.SELENIUM_REMOTE_CAPABILITIES}": ${e}`);
     }
     progress.log(`<selenium> connecting to ${hubUrl}`);
-    const response = await (0, _netUtils.fetchData)({
+    const response = await (0, _network.fetchData)({
       url: hubUrl + 'session',
       method: 'POST',
       data: JSON.stringify({
@@ -189,7 +188,7 @@ class Chromium extends _browserType.BrowserType {
     progress.log(`<selenium> connected to sessionId=${sessionId}`);
     const disconnectFromSelenium = async () => {
       progress.log(`<selenium> disconnecting from sessionId=${sessionId}`);
-      await (0, _netUtils.fetchData)({
+      await (0, _network.fetchData)({
         url: hubUrl + 'session/' + sessionId,
         method: 'DELETE'
       }).catch(error => progress.log(`<error disconnecting from selenium>: ${error}`));
@@ -221,7 +220,7 @@ class Chromium extends _browserType.BrowserType {
         if (endpointURL.hostname === 'localhost' || endpointURL.hostname === '127.0.0.1') {
           const sessionInfoUrl = new URL(hubUrl).origin + '/grid/api/testsession?session=' + sessionId;
           try {
-            const sessionResponse = await (0, _netUtils.fetchData)({
+            const sessionResponse = await (0, _network.fetchData)({
               url: sessionInfoUrl,
               method: 'GET',
               timeout: progress.timeUntilDeadline()
@@ -259,9 +258,12 @@ class Chromium extends _browserType.BrowserType {
     if (args.find(arg => arg.startsWith('--remote-debugging-pipe'))) throw new Error('Playwright manages remote debugging connection itself.');
     if (args.find(arg => !arg.startsWith('-'))) throw new Error('Arguments can not specify page to be opened');
     const chromeArguments = [..._chromiumSwitches.chromiumSwitches];
-
-    // See https://github.com/microsoft/playwright/issues/7362
-    if (_os.default.platform() === 'darwin') chromeArguments.push('--enable-use-zoom-for-dsf=false');
+    if (_os.default.platform() === 'darwin') {
+      // See https://github.com/microsoft/playwright/issues/7362
+      chromeArguments.push('--enable-use-zoom-for-dsf=false');
+      // See https://bugs.chromium.org/p/chromium/issues/detail?id=1407025.
+      if (options.headless) chromeArguments.push('--use-angle');
+    }
     if (options.devtools) chromeArguments.push('--auto-open-devtools-for-tabs');
     if (options.headless) {
       chromeArguments.push('--headless', '--hide-scrollbars', '--mute-audio', '--blink-settings=primaryHoverType=2,availableHoverTypes=2,primaryPointerType=4,availablePointerTypes=4');
@@ -292,23 +294,13 @@ async function urlToWSEndpoint(progress, endpointURL) {
   if (endpointURL.startsWith('ws')) return endpointURL;
   progress.log(`<ws preparing> retrieving websocket url from ${endpointURL}`);
   const httpURL = endpointURL.endsWith('/') ? `${endpointURL}json/version/` : `${endpointURL}/json/version/`;
-  const request = endpointURL.startsWith('https') ? _https.default : _http.default;
-  const json = await new Promise((resolve, reject) => {
-    request.get(httpURL, {
-      timeout: _netUtils.NET_DEFAULT_TIMEOUT
-    }, resp => {
-      if (resp.statusCode < 200 || resp.statusCode >= 400) {
-        reject(new Error(`Unexpected status ${resp.statusCode} when connecting to ${httpURL}.\n` + `This does not look like a DevTools server, try connecting via ws://.`));
-      }
-      let data = '';
-      resp.on('data', chunk => data += chunk);
-      resp.on('end', () => resolve(data));
-    }).on('error', reject);
-  });
+  const json = await (0, _network.fetchData)({
+    url: httpURL
+  }, async (_, resp) => new Error(`Unexpected status ${resp.statusCode} when connecting to ${httpURL}.\n` + `This does not look like a DevTools server, try connecting via ws://.`));
   return JSON.parse(json).webSocketDebuggerUrl;
 }
 async function seleniumErrorHandler(params, response) {
-  const body = await (0, _utils.streamToString)(response);
+  const body = await streamToString(response);
   let message = body;
   try {
     const json = JSON.parse(body);
@@ -319,4 +311,12 @@ async function seleniumErrorHandler(params, response) {
 function addProtocol(url) {
   if (!['ws://', 'wss://', 'http://', 'https://'].some(protocol => url.startsWith(protocol))) return 'http://' + url;
   return url;
+}
+function streamToString(stream) {
+  return new Promise((resolve, reject) => {
+    const chunks = [];
+    stream.on('data', chunk => chunks.push(Buffer.from(chunk)));
+    stream.on('error', reject);
+    stream.on('end', () => resolve(Buffer.concat(chunks).toString('utf8')));
+  });
 }

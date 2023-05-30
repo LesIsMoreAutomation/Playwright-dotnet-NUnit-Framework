@@ -20,7 +20,7 @@ var _manualPromise = require("../utils/manualPromise");
 var _debugLogger = require("../common/debugLogger");
 var _comparators = require("../utils/comparators");
 var _instrumentation = require("./instrumentation");
-var _selectorParser = require("./isomorphic/selectorParser");
+var _selectorParser = require("../utils/isomorphic/selectorParser");
 var _utilityScriptSerializers = require("./isomorphic/utilityScriptSerializers");
 function _getRequireWildcardCache(nodeInterop) { if (typeof WeakMap !== "function") return null; var cacheBabelInterop = new WeakMap(); var cacheNodeInterop = new WeakMap(); return (_getRequireWildcardCache = function (nodeInterop) { return nodeInterop ? cacheNodeInterop : cacheBabelInterop; })(nodeInterop); }
 function _interopRequireWildcard(obj, nodeInterop) { if (!nodeInterop && obj && obj.__esModule) { return obj; } if (obj === null || typeof obj !== "object" && typeof obj !== "function") { return { default: obj }; } var cache = _getRequireWildcardCache(nodeInterop); if (cache && cache.has(obj)) { return cache.get(obj); } var newObj = {}; var hasPropertyDescriptor = Object.defineProperty && Object.getOwnPropertyDescriptor; for (var key in obj) { if (key !== "default" && Object.prototype.hasOwnProperty.call(obj, key)) { var desc = hasPropertyDescriptor ? Object.getOwnPropertyDescriptor(obj, key) : null; if (desc && (desc.get || desc.set)) { Object.defineProperty(newObj, key, desc); } else { newObj[key] = obj[key]; } } } newObj.default = obj; if (cache) { cache.set(obj, newObj); } return newObj; }
@@ -44,13 +44,13 @@ function _interopRequireWildcard(obj, nodeInterop) { if (!nodeInterop && obj && 
 class Page extends _instrumentation.SdkObject {
   // Aiming at 25 fps by default - each frame is 40ms, but we give some slack with 35ms.
   // When throttling for tracing, 200ms between frames, except for 10 frames around the action.
-
   constructor(delegate, browserContext) {
     super(browserContext, 'page');
     this._closedState = 'open';
     this._closedPromise = new _manualPromise.ManualPromise();
     this._disconnected = false;
     this._initialized = false;
+    this._eventsToEmitAfterInitialized = [];
     this._disconnectedPromise = new _manualPromise.ManualPromise();
     this._crashedPromise = new _manualPromise.ManualPromise();
     this._browserContext = void 0;
@@ -74,7 +74,6 @@ class Page extends _instrumentation.SdkObject {
     this._clientRequestInterceptor = void 0;
     this._serverRequestInterceptor = void 0;
     this._ownedContext = void 0;
-    this.selectors = void 0;
     this._pageIsError = void 0;
     this._video = null;
     this._opener = void 0;
@@ -92,7 +91,6 @@ class Page extends _instrumentation.SdkObject {
     this._frameManager = new frames.FrameManager(this);
     if (delegate.pdf) this.pdf = delegate.pdf.bind(delegate);
     this.coverage = delegate.coverage ? delegate.coverage() : null;
-    this.selectors = browserContext.selectors();
   }
   async initOpener(opener) {
     if (!opener) return;
@@ -108,11 +106,16 @@ class Page extends _instrumentation.SdkObject {
     }
     this._initialized = true;
     this.emitOnContext(contextEvent, this);
-    // I may happen that page initialization finishes after Close event has already been sent,
+    for (const {
+      event,
+      args
+    } of this._eventsToEmitAfterInitialized) this._browserContext.emit(event, ...args);
+    this._eventsToEmitAfterInitialized = [];
+
+    // It may happen that page initialization finishes after Close event has already been sent,
     // in that case we fire another Close event to ensure that each reported Page will have
     // corresponding Close event after it is reported on the context.
-    if (this.isClosed()) this.emit(Page.Events.Close);
-    this.instrumentation.onPageOpen(this);
+    if (this.isClosed()) this.emit(Page.Events.Close);else this.instrumentation.onPageOpen(this);
   }
   initializedOrUndefined() {
     return this._initialized ? this : undefined;
@@ -120,6 +123,17 @@ class Page extends _instrumentation.SdkObject {
   emitOnContext(event, ...args) {
     if (this._isServerSideOnly) return;
     this._browserContext.emit(event, ...args);
+  }
+  emitOnContextOnceInitialized(event, ...args) {
+    if (this._isServerSideOnly) return;
+    // Some events, like console messages, may come before page is ready.
+    // In this case, postpone the event until page is initialized,
+    // and dispatch it to the client later, either on the live Page,
+    // or on the "errored" Page.
+    if (this._initialized) this._browserContext.emit(event, ...args);else this._eventsToEmitAfterInitialized.push({
+      event,
+      args
+    });
   }
   async resetForReuse(metadata) {
     this.setDefaultNavigationTimeout(undefined);
@@ -135,12 +149,8 @@ class Page extends _instrumentation.SdkObject {
     this._emulatedMedia = {};
     this._extraHTTPHeaders = undefined;
     this._interceptFileChooser = false;
-    await Promise.all([this._delegate.updateEmulatedViewportSize(true), this._delegate.updateEmulateMedia(), this._delegate.updateFileChooserInterception()]);
-  }
-  async _doSlowMo() {
-    const slowMo = this._browserContext._browser.options.slowMo;
-    if (!slowMo) return;
-    await new Promise(x => setTimeout(x, slowMo));
+    await Promise.all([this._delegate.updateEmulatedViewportSize(), this._delegate.updateEmulateMedia(), this._delegate.updateFileChooserInterception()]);
+    await this._delegate.resetForReuse();
   }
   _didClose() {
     this._frameManager.dispose();
@@ -225,7 +235,11 @@ class Page extends _instrumentation.SdkObject {
   _addConsoleMessage(type, args, location, text) {
     const message = new _console.ConsoleMessage(this, type, text, args, location);
     const intercepted = this._frameManager.interceptConsoleMessage(message);
-    if (intercepted || !this.listenerCount(Page.Events.Console)) args.forEach(arg => arg.dispose());else this.emit(Page.Events.Console, message);
+    if (intercepted) {
+      args.forEach(arg => arg.dispose());
+      return;
+    }
+    this.emitOnContextOnceInitialized(_browserContext.BrowserContext.Events.Console, message);
   }
   async reload(metadata, options) {
     const controller = new _progress.ProgressController(metadata, this);
@@ -235,7 +249,6 @@ class Page extends _instrumentation.SdkObject {
       const [response] = await Promise.all([
       // Reload must be a new document, and should not be confused with a stray pushState.
       this.mainFrame()._waitForNavigation(progress, true /* requiresNewDocument */, options), this._delegate.reload()]);
-      await this._doSlowMo();
       return response;
     }), this._timeoutSettings.navigationTimeout(options));
   }
@@ -253,7 +266,6 @@ class Page extends _instrumentation.SdkObject {
       if (!result) return null;
       const response = await waitPromise;
       if (error) throw error;
-      await this._doSlowMo();
       return response;
     }), this._timeoutSettings.navigationTimeout(options));
   }
@@ -271,7 +283,6 @@ class Page extends _instrumentation.SdkObject {
       if (!result) return null;
       const response = await waitPromise;
       if (error) throw error;
-      await this._doSlowMo();
       return response;
     }), this._timeoutSettings.navigationTimeout(options));
   }
@@ -281,7 +292,6 @@ class Page extends _instrumentation.SdkObject {
     if (options.reducedMotion !== undefined) this._emulatedMedia.reducedMotion = options.reducedMotion;
     if (options.forcedColors !== undefined) this._emulatedMedia.forcedColors = options.forcedColors;
     await this._delegate.updateEmulateMedia();
-    await this._doSlowMo();
   }
   emulatedMedia() {
     var _contextOptions$color, _contextOptions$reduc, _contextOptions$force;
@@ -303,7 +313,6 @@ class Page extends _instrumentation.SdkObject {
       }
     };
     await this._delegate.updateEmulatedViewportSize();
-    await this._doSlowMo();
   }
   viewportSize() {
     var _this$emulatedSize;
@@ -446,6 +455,9 @@ class Page extends _instrumentation.SdkObject {
   isClosed() {
     return this._closedState === 'closed';
   }
+  isClosedOrClosingOrCrashed() {
+    return this._closedState !== 'open' || this._crashedPromise.isDone();
+  }
   _addWorker(workerId, worker) {
     this._workers.set(workerId, worker);
     this.emit(Page.Events.Worker, worker);
@@ -496,10 +508,6 @@ class Page extends _instrumentation.SdkObject {
   firePageError(error) {
     this.emit(Page.Events.PageError, error);
   }
-  parseSelector(selector, options) {
-    const strict = typeof (options === null || options === void 0 ? void 0 : options.strict) === 'boolean' ? options.strict : !!this.context()._options.strictSelectors;
-    return this.selectors.parseSelector(selector, strict);
-  }
   async hideHighlight() {
     await Promise.all(this.frames().map(frame => frame.hideHighlight().catch(() => {})));
   }
@@ -511,8 +519,6 @@ exports.Page = Page;
 Page.Events = {
   Close: 'close',
   Crash: 'crash',
-  Console: 'console',
-  Dialog: 'dialog',
   Download: 'download',
   FileChooser: 'filechooser',
   // Can't use just 'error' due to node.js special treatment of error events.
@@ -538,7 +544,7 @@ class Worker extends _instrumentation.SdkObject {
     this._executionContextPromise = new Promise(x => this._executionContextCallback = x);
   }
   _createExecutionContext(delegate) {
-    this._existingExecutionContext = new js.ExecutionContext(this, delegate);
+    this._existingExecutionContext = new js.ExecutionContext(this, delegate, 'worker');
     this._executionContextCallback(this._existingExecutionContext);
   }
   url() {
@@ -549,10 +555,16 @@ class Worker extends _instrumentation.SdkObject {
     this.emit(Worker.Events.Close, this);
   }
   async evaluateExpression(expression, isFunction, arg) {
-    return js.evaluateExpression(await this._executionContextPromise, true /* returnByValue */, expression, isFunction, arg);
+    return js.evaluateExpression(await this._executionContextPromise, expression, {
+      returnByValue: true,
+      isFunction
+    }, arg);
   }
   async evaluateExpressionHandle(expression, isFunction, arg) {
-    return js.evaluateExpression(await this._executionContextPromise, false /* returnByValue */, expression, isFunction, arg);
+    return js.evaluateExpression(await this._executionContextPromise, expression, {
+      returnByValue: false,
+      isFunction
+    }, arg);
   }
 }
 exports.Worker = Worker;
@@ -667,11 +679,14 @@ function addPageBinding(bindingName, needsHandle, utilityScriptSerializers) {
         seq
       };
     } else {
-      const serializedArgs = args.map(a => utilityScriptSerializers.serializeAsCallArgument(a, v => {
-        return {
-          fallThrough: v
-        };
-      }));
+      const serializedArgs = [];
+      for (let i = 0; i < args.length; i++) {
+        serializedArgs[i] = utilityScriptSerializers.serializeAsCallArgument(args[i], v => {
+          return {
+            fallThrough: v
+          };
+        });
+      }
       payload = {
         name: bindingName,
         seq,

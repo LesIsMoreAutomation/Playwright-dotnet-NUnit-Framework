@@ -8,7 +8,6 @@ exports.assertDone = assertDone;
 exports.isNonRecoverableDOMError = isNonRecoverableDOMError;
 exports.kUnableToAdoptErrorMessage = void 0;
 exports.throwRetargetableDOMError = throwRetargetableDOMError;
-exports.waitForSelectorTask = waitForSelectorTask;
 var _utilsBundle = require("../utilsBundle");
 var injectedScriptSource = _interopRequireWildcard(require("../generated/injectedScriptSource"));
 var _protocolError = require("./protocolError");
@@ -40,7 +39,7 @@ function isNonRecoverableDOMError(error) {
 }
 class FrameExecutionContext extends js.ExecutionContext {
   constructor(delegate, frame, world) {
-    super(frame, delegate);
+    super(frame, delegate, world || 'content-script');
     this.frame = void 0;
     this._injectedScriptPromise = void 0;
     this.world = void 0;
@@ -60,17 +59,23 @@ class FrameExecutionContext extends js.ExecutionContext {
   async evaluateHandle(pageFunction, arg) {
     return js.evaluate(this, false /* returnByValue */, pageFunction, arg);
   }
-  async evaluateExpression(expression, isFunction, arg) {
-    return js.evaluateExpression(this, true /* returnByValue */, expression, isFunction, arg);
+  async evaluateExpression(expression, options, arg) {
+    return js.evaluateExpression(this, expression, {
+      ...options,
+      returnByValue: true
+    }, arg);
   }
-  async evaluateExpressionAndWaitForSignals(expression, isFunction, arg) {
+  async evaluateExpressionAndWaitForSignals(expression, options, arg) {
     return await this.frame._page._frameManager.waitForSignalsCreatedBy(null, false /* noWaitFor */, async () => {
-      return this.evaluateExpression(expression, isFunction, arg);
+      return this.evaluateExpression(expression, options, arg);
     });
   }
-  async evaluateExpressionHandleAndWaitForSignals(expression, isFunction, arg) {
+  async evaluateExpressionHandleAndWaitForSignals(expression, options, arg) {
     return await this.frame._page._frameManager.waitForSignalsCreatedBy(null, false /* noWaitFor */, async () => {
-      return js.evaluateExpression(this, false /* returnByValue */, expression, isFunction, arg);
+      return js.evaluateExpression(this, expression, {
+        ...options,
+        returnByValue: false
+      }, arg);
     });
   }
   createHandle(remoteObject) {
@@ -80,36 +85,36 @@ class FrameExecutionContext extends js.ExecutionContext {
   injectedScript() {
     if (!this._injectedScriptPromise) {
       const custom = [];
+      const selectorsRegistry = this.frame._page.context().selectors();
       for (const [name, {
         source
-      }] of this.frame._page.selectors._engines) custom.push(`{ name: '${name}', engine: (${source}) }`);
+      }] of selectorsRegistry._engines) custom.push(`{ name: '${name}', engine: (${source}) }`);
       const sdkLanguage = this.frame._page.context()._browser.options.sdkLanguage;
       const source = `
         (() => {
         const module = {};
         ${injectedScriptSource.source}
-        return new module.exports(
+        return new (module.exports.InjectedScript())(
+          globalThis,
           ${(0, _utils.isUnderTest)()},
           "${sdkLanguage}",
-          ${JSON.stringify(this.frame._page.selectors.testIdAttributeName())},
+          ${JSON.stringify(selectorsRegistry.testIdAttributeName())},
           ${this.frame._page._delegate.rafCountForStablePosition()},
           "${this.frame._page._browserContext._browser.options.name}",
           [${custom.join(',\n')}]
         );
         })();
       `;
-      this._injectedScriptPromise = this.rawEvaluateHandle(source).then(objectId => new js.JSHandle(this, 'object', undefined, objectId));
+      this._injectedScriptPromise = this.rawEvaluateHandle(source).then(objectId => new js.JSHandle(this, 'object', 'InjectedScript', objectId));
     }
     return this._injectedScriptPromise;
-  }
-  async doSlowMo() {
-    return this.frame._page._doSlowMo();
   }
 }
 exports.FrameExecutionContext = FrameExecutionContext;
 class ElementHandle extends js.JSHandle {
   constructor(context, objectId) {
     super(context, 'node', undefined, objectId);
+    this.__elementhandle = true;
     this._page = void 0;
     this._frame = void 0;
     this._page = context.frame._page;
@@ -226,7 +231,6 @@ class ElementHandle extends js.JSHandle {
         eventInit
       }]);
     });
-    await this._page._doSlowMo();
   }
   async _scrollRectIntoViewIfNeeded(rect) {
     return await this._page._delegate.scrollRectIntoViewIfNeeded(this, rect);
@@ -417,6 +421,7 @@ class ElementHandle extends js.JSHandle {
         // Do not await here, just in case the renderer is stuck (e.g. on alert)
         // and we won't be able to cleanup.
         hitTargetInterceptionHandle.evaluate(h => h.stop()).catch(e => {});
+        hitTargetInterceptionHandle.dispose();
       });
     }
     const actionResult = await this._page._frameManager.waitForSignalsCreatedBy(progress, options.noWaitAfter, async () => {
@@ -428,7 +433,10 @@ class ElementHandle extends js.JSHandle {
       await action(point);
       if (restoreModifiers) await this._page.keyboard._ensureModifiers(restoreModifiers);
       if (hitTargetInterceptionHandle) {
-        const stopHitTargetInterception = hitTargetInterceptionHandle.evaluate(h => h.stop()).catch(e => 'done');
+        const stopHitTargetInterception = hitTargetInterceptionHandle.evaluate(h => h.stop()).catch(e => 'done').finally(() => {
+          var _hitTargetInterceptio;
+          (_hitTargetInterceptio = hitTargetInterceptionHandle) === null || _hitTargetInterceptio === void 0 ? void 0 : _hitTargetInterceptio.dispose();
+        });
         if (!options.noWaitAfter) {
           // When noWaitAfter is passed, we do not want to accidentally stall on
           // non-committed navigation blocking the evaluate.
@@ -507,7 +515,6 @@ class ElementHandle extends js.JSHandle {
         optionsToSelect,
         force: options.force
       });
-      await this._page._doSlowMo();
       return result;
     });
   }
@@ -592,14 +599,12 @@ class ElementHandle extends js.JSHandle {
       progress.throwIfAborted(); // Avoid action that has side-effects.
       if (localPaths) await this._page._delegate.setInputFilePaths(retargeted, localPaths);else await this._page._delegate.setInputFiles(retargeted, filePayloads);
     });
-    await this._page._doSlowMo();
     return 'done';
   }
   async focus(metadata) {
     const controller = new _progress.ProgressController(metadata, this);
     await controller.run(async progress => {
       const result = await this._focus(progress);
-      await this._page._doSlowMo();
       return assertDone(throwRetargetableDOMError(result));
     }, 0);
   }
@@ -681,46 +686,22 @@ class ElementHandle extends js.JSHandle {
     return controller.run(progress => this._page._screenshotter.screenshotElement(progress, this, options), this._page._timeoutSettings.timeout(options));
   }
   async querySelector(selector, options) {
-    const pair = await this._frame.resolveFrameForSelectorNoWait(selector, options, this);
-    if (!pair) return null;
-    const {
-      frame,
-      info
-    } = pair;
-    // If we end up in the same frame => use the scope again, line above was noop.
-    return this._page.selectors.query(frame, info, this._frame === frame ? this : undefined);
+    return this._frame.selectors.query(selector, options, this);
   }
   async querySelectorAll(selector) {
-    const pair = await this._frame.resolveFrameForSelectorNoWait(selector, {}, this);
-    if (!pair) return [];
-    const {
-      frame,
-      info
-    } = pair;
-    // If we end up in the same frame => use the scope again, line above was noop.
-    return this._page.selectors._queryAll(frame, info, this._frame === frame ? this : undefined, true /* adoptToMain */);
+    return this._frame.selectors.queryAll(selector, this);
   }
-
   async evalOnSelectorAndWaitForSignals(selector, strict, expression, isFunction, arg) {
-    const pair = await this._frame.resolveFrameForSelectorNoWait(selector, {
+    const handle = await this._frame.selectors.query(selector, {
       strict
     }, this);
-    // If we end up in the same frame => use the scope again, line above was noop.
-    const handle = pair ? await this._page.selectors.query(pair.frame, pair.info, this._frame === pair.frame ? this : undefined) : null;
     if (!handle) throw new Error(`Error: failed to find element matching selector "${selector}"`);
     const result = await handle.evaluateExpressionAndWaitForSignals(expression, isFunction, true, arg);
     handle.dispose();
     return result;
   }
   async evalOnSelectorAllAndWaitForSignals(selector, expression, isFunction, arg) {
-    const pair = await this._frame.resolveFrameForSelectorNoWait(selector, {}, this);
-    if (!pair) throw new Error(`Error: failed to find frame for selector "${selector}"`);
-    const {
-      frame,
-      info
-    } = pair;
-    // If we end up in the same frame => use the scope again, line above was noop.
-    const arrayHandle = await this._page.selectors._queryArrayInMainWorld(frame, info, this._frame === frame ? this : undefined);
+    const arrayHandle = await this._frame.selectors.queryArrayInMainWorld(selector, this);
     const result = await arrayHandle.evaluateExpressionAndWaitForSignals(expression, isFunction, true, arg);
     arrayHandle.dispose();
     return result;
@@ -793,11 +774,20 @@ class ElementHandle extends js.JSHandle {
     while (frame.parentFrame()) {
       const frameElement = await frame.frameElement();
       const box = await frameElement.boundingBox();
-      if (!box) return 'error:notconnected';
+      const style = await frameElement.evaluateInUtility(([injected, iframe]) => injected.describeIFrameStyle(iframe), {}).catch(e => 'error:notconnected');
+      if (!box || style === 'error:notconnected') return 'error:notconnected';
+      if (style === 'transformed') {
+        // We cannot translate coordinates when iframe has any transform applied.
+        // The best we can do right now is to skip the hitPoint check,
+        // and solely rely on the event interceptor.
+        return {
+          framePoint: undefined
+        };
+      }
       // Translate from viewport coordinates to frame coordinates.
       const pointInFrame = {
-        x: point.x - box.x,
-        y: point.y - box.y
+        x: point.x - box.x - style.left,
+        y: point.y - box.y - style.top
       };
       data.push({
         frame,
@@ -912,52 +902,6 @@ function compensateHalfIntegerRoundingError(point) {
   if (remainderX > 0.49 && remainderX < 0.51) point.x -= 0.02;
   const remainderY = point.y - Math.floor(point.y);
   if (remainderY > 0.49 && remainderY < 0.51) point.y -= 0.02;
-}
-function waitForSelectorTask(selector, state, omitReturnValue, root) {
-  return injectedScript => injectedScript.evaluateHandle((injected, {
-    parsed,
-    strict,
-    state,
-    omitReturnValue,
-    root
-  }) => {
-    let lastElement;
-    return injected.pollRaf(progress => {
-      const elements = injected.querySelectorAll(parsed, root || document);
-      let element = elements[0];
-      const visible = element ? injected.isVisible(element) : false;
-      if (lastElement !== element) {
-        lastElement = element;
-        if (!element) {
-          progress.log(`  locator did not resolve to any element`);
-        } else {
-          if (elements.length > 1) {
-            if (strict) throw injected.strictModeViolationError(parsed, elements);
-            progress.log(`  locator resolved to ${elements.length} elements. Proceeding with the first one.`);
-          }
-          progress.log(`  locator resolved to ${visible ? 'visible' : 'hidden'} ${injected.previewNode(element)}`);
-        }
-      }
-      const hasElement = !!element;
-      if (omitReturnValue) element = undefined;
-      switch (state) {
-        case 'attached':
-          return hasElement ? element : progress.continuePolling;
-        case 'detached':
-          return !hasElement ? undefined : progress.continuePolling;
-        case 'visible':
-          return visible ? element : progress.continuePolling;
-        case 'hidden':
-          return !visible ? undefined : progress.continuePolling;
-      }
-    });
-  }, {
-    parsed: selector.parsed,
-    strict: selector.strict,
-    state,
-    omitReturnValue,
-    root
-  });
 }
 function joinWithAnd(strings) {
   if (strings.length < 1) return strings.join(', ');

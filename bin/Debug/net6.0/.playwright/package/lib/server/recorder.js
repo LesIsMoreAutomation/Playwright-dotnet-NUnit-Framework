@@ -22,7 +22,8 @@ var _recorderUtils = require("./recorder/recorderUtils");
 var _debugger = require("./debugger");
 var _events = require("events");
 var _timeoutRunner = require("../utils/timeoutRunner");
-var _locatorParser = require("./isomorphic/locatorParser");
+var _locatorParser = require("../utils/isomorphic/locatorParser");
+var _eventsHelper = require("./../utils/eventsHelper");
 function _getRequireWildcardCache(nodeInterop) { if (typeof WeakMap !== "function") return null; var cacheBabelInterop = new WeakMap(); var cacheNodeInterop = new WeakMap(); return (_getRequireWildcardCache = function (nodeInterop) { return nodeInterop ? cacheNodeInterop : cacheBabelInterop; })(nodeInterop); }
 function _interopRequireWildcard(obj, nodeInterop) { if (!nodeInterop && obj && obj.__esModule) { return obj; } if (obj === null || typeof obj !== "object" && typeof obj !== "function") { return { default: obj }; } var cache = _getRequireWildcardCache(nodeInterop); if (cache && cache.has(obj)) { return cache.get(obj); } var newObj = {}; var hasPropertyDescriptor = Object.defineProperty && Object.getOwnPropertyDescriptor; for (var key in obj) { if (key !== "default" && Object.prototype.hasOwnProperty.call(obj, key)) { var desc = hasPropertyDescriptor ? Object.getOwnPropertyDescriptor(obj, key) : null; if (desc && (desc.get || desc.set)) { Object.defineProperty(newObj, key, desc); } else { newObj[key] = obj[key]; } } } newObj.default = obj; if (cache) { cache.set(obj, newObj); } return newObj; }
 /**
@@ -75,7 +76,7 @@ class Recorder {
     this._contextRecorder = new ContextRecorder(context, params);
     this._context = context;
     this._omitCallTracking = !!params.omitCallTracking;
-    this._debugger = _debugger.Debugger.lookup(context);
+    this._debugger = context.debugger();
     this._handleSIGINT = params.handleSIGINT;
     context.instrumentation.addListener(this, context);
     this._currentLanguage = this._contextRecorder.languageName();
@@ -197,15 +198,12 @@ class Recorder {
     this._debugger.resume(false);
   }
   setHighlightedSelector(language, selector) {
-    this._highlightedSelector = (0, _locatorParser.locatorOrSelectorAsSelector)(language, selector, this._contextRecorder.testIdAttributeName());
+    this._highlightedSelector = (0, _locatorParser.locatorOrSelectorAsSelector)(language, selector, this._context.selectors().testIdAttributeName());
     this._refreshOverlay();
   }
   hideHighlightedSelecor() {
     this._highlightedSelector = '';
     this._refreshOverlay();
-  }
-  setTestIdAttributeName(testIdAttributeName) {
-    this._contextRecorder.setTestIdAttributeName(testIdAttributeName);
   }
   setOutput(codegenId, outputFile) {
     this._contextRecorder.setOutput(codegenId, outputFile);
@@ -243,11 +241,11 @@ class Recorder {
     // Apply new decorations.
     let fileToSelect = undefined;
     for (const metadata of this._currentCallsMetadata.keys()) {
-      if (!metadata.stack || !metadata.stack[0]) continue;
+      if (!metadata.location) continue;
       const {
         file,
         line
-      } = metadata.stack[0];
+      } = metadata.location;
       let source = this._userSources.get(file);
       if (!source) {
         source = {
@@ -310,15 +308,15 @@ class ContextRecorder extends _events.EventEmitter {
     this._generator = void 0;
     this._pageAliases = new Map();
     this._lastPopupOrdinal = 0;
-    this._lastDialogOrdinal = 0;
-    this._lastDownloadOrdinal = 0;
+    this._lastDialogOrdinal = -1;
+    this._lastDownloadOrdinal = -1;
     this._timers = new Set();
     this._context = void 0;
     this._params = void 0;
     this._recorderSources = void 0;
     this._throttledOutputFile = null;
     this._orderedLanguages = [];
-    this._testIdAttributeName = 'data-testid';
+    this._listeners = [];
     this._context = context;
     this._params = params;
     this._recorderSources = [];
@@ -360,17 +358,11 @@ class ContextRecorder extends _events.EventEmitter {
       var _this$_throttledOutpu2;
       (_this$_throttledOutpu2 = this._throttledOutputFile) === null || _this$_throttledOutpu2 === void 0 ? void 0 : _this$_throttledOutpu2.flush();
     });
-    process.on('exit', () => {
+    this._listeners.push(_eventsHelper.eventsHelper.addEventListener(process, 'exit', () => {
       var _this$_throttledOutpu3;
       (_this$_throttledOutpu3 = this._throttledOutputFile) === null || _this$_throttledOutpu3 === void 0 ? void 0 : _this$_throttledOutpu3.flush();
-    });
+    }));
     this._generator = generator;
-  }
-  testIdAttributeName() {
-    return this._testIdAttributeName;
-  }
-  setTestIdAttributeName(testIdAttributeName) {
-    this._testIdAttributeName = testIdAttributeName;
   }
   setOutput(codegenId, outputFile) {
     var _this$_generator;
@@ -391,6 +383,7 @@ class ContextRecorder extends _events.EventEmitter {
   async install() {
     this._context.on(_browserContext.BrowserContext.Events.Page, page => this._onPage(page));
     for (const page of this._context.pages()) this._onPage(page);
+    this._context.on(_browserContext.BrowserContext.Events.Dialog, dialog => this._onDialog(dialog.page()));
 
     // Input actions that potentially lead to navigation are intercepted on the page and are
     // performed by the Playwright.
@@ -406,6 +399,7 @@ class ContextRecorder extends _events.EventEmitter {
   dispose() {
     for (const timer of this._timers) clearTimeout(timer);
     this._timers.clear();
+    _eventsHelper.eventsHelper.removeEventListeners(this._listeners);
   }
   async _onPage(page) {
     // First page is called page, others are called popup1, popup2, etc.
@@ -425,7 +419,6 @@ class ContextRecorder extends _events.EventEmitter {
       if (event.isPublic) this._onFrameNavigated(frame, page);
     });
     page.on(_page.Page.Events.Download, () => this._onDownload(page));
-    page.on(_page.Page.Events.Dialog, () => this._onDialog(page));
     const suffix = this._pageAliases.size ? String(++this._lastPopupOrdinal) : '';
     const pageAlias = 'page' + suffix;
     this._pageAliases.set(page, pageAlias);
@@ -482,13 +475,18 @@ class ContextRecorder extends _events.EventEmitter {
     }
     return fallback;
   }
+  testIdAttributeName() {
+    return this._params.testIdAttributeName || this._context.selectors().testIdAttributeName() || 'data-testid';
+  }
   async _findFrameSelector(frame, parent) {
     try {
       const frameElement = await frame.frameElement();
       if (!frameElement) return;
       const utility = await parent._utilityContext();
       const injected = await utility.injectedScript();
-      const selector = await injected.evaluate((injected, element) => injected.generateSelector(element, this._testIdAttributeName), frameElement);
+      const selector = await injected.evaluate((injected, element) => {
+        return injected.generateSelector(element, '', true);
+      }, frameElement);
       return selector;
     } catch (e) {}
   }
@@ -507,14 +505,13 @@ class ContextRecorder extends _events.EventEmitter {
         objectId: frame.guid,
         pageId: frame._page.guid,
         frameId: frame.guid,
-        wallTime: Date.now(),
         startTime: (0, _utils2.monotonicTime)(),
         endTime: 0,
+        wallTime: Date.now(),
         type: 'Frame',
         method: action,
         params,
-        log: [],
-        snapshots: []
+        log: []
       };
       this._generator.willPerformAction(actionInContext);
       try {
@@ -612,16 +609,18 @@ class ContextRecorder extends _events.EventEmitter {
   }
   _onDownload(page) {
     const pageAlias = this._pageAliases.get(page);
+    ++this._lastDownloadOrdinal;
     this._generator.signal(pageAlias, page.mainFrame(), {
       name: 'download',
-      downloadAlias: String(++this._lastDownloadOrdinal)
+      downloadAlias: this._lastDownloadOrdinal ? String(this._lastDownloadOrdinal) : ''
     });
   }
   _onDialog(page) {
     const pageAlias = this._pageAliases.get(page);
+    ++this._lastDialogOrdinal;
     this._generator.signal(pageAlias, page.mainFrame(), {
       name: 'dialog',
-      dialogAlias: String(++this._lastDialogOrdinal)
+      dialogAlias: this._lastDialogOrdinal ? String(this._lastDialogOrdinal) : ''
     });
   }
 }
@@ -655,5 +654,5 @@ class ThrottledFile {
   }
 }
 function isScreenshotCommand(metadata) {
-  return metadata.method.includes('screenshot');
+  return metadata.method.toLowerCase().includes('screenshot');
 }

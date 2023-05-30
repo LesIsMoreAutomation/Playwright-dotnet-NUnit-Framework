@@ -39,6 +39,8 @@ class WKBrowser extends _browser.Browser {
     if (options.__testHookOnConnectToBrowser) await options.__testHookOnConnectToBrowser();
     const promises = [browser._browserSession.send('Playwright.enable')];
     if (options.persistent) {
+      var _options$persistent;
+      (_options$persistent = options.persistent).userAgent || (_options$persistent.userAgent = DEFAULT_USER_AGENT);
       browser._defaultContext = new WKBrowserContext(browser, undefined, options.persistent);
       promises.push(browser._defaultContext._initialize());
     }
@@ -64,7 +66,9 @@ class WKBrowser extends _browser.Browser {
   }
   async doCreateNewContext(options) {
     const createOptions = options.proxy ? {
-      proxyServer: options.proxy.server,
+      // Enable socks5 hostname resolution on Windows. Workaround can be removed once fixed upstream.
+      // See https://github.com/microsoft/playwright/issues/20451
+      proxyServer: process.platform === 'win32' ? options.proxy.server.replace(/^socks5:\/\//, 'socks5h://') : options.proxy.server,
       proxyBypassList: options.proxy.bypass
     } : undefined;
     const {
@@ -170,6 +174,7 @@ exports.WKBrowser = WKBrowser;
 class WKBrowserContext extends _browserContext.BrowserContext {
   constructor(browser, browserContextId, options) {
     super(browser, options, browserContextId);
+    this._validateEmulatedViewport(options.viewport);
     this._authenticateProxyViaHeader();
   }
   async _initialize() {
@@ -290,6 +295,12 @@ class WKBrowserContext extends _browserContext.BrowserContext {
     for (const page of this.pages()) await page._delegate.updateRequestInterception();
   }
   onClosePersistent() {}
+  async clearCache() {
+    // We use ephemeral contexts so there is no disk cache.
+    await this._browser._browserSession.send('Playwright.clearMemoryCache', {
+      browserContextId: this._browserContextId
+    });
+  }
   async doClose() {
     if (!this._browserContextId) {
       await Promise.all(this._wkPages().map(wkPage => wkPage._stopVideo()));
@@ -306,6 +317,10 @@ class WKBrowserContext extends _browserContext.BrowserContext {
     await this._browser._browserSession.send('Playwright.cancelDownload', {
       uuid
     });
+  }
+  _validateEmulatedViewport(viewportSize) {
+    if (!viewportSize) return;
+    if (process.platform === 'win32' && this._browser.options.headful && (viewportSize.width < 250 || viewportSize.height < 240)) throw new Error(`WebKit on Windows has a minimal viewport of 250x240.`);
   }
 }
 exports.WKBrowserContext = WKBrowserContext;

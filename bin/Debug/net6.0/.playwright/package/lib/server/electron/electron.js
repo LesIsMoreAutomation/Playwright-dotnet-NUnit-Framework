@@ -63,8 +63,9 @@ class ElectronApplication extends _instrumentation.SdkObject {
     this._nodeElectronHandlePromise = new Promise(f => {
       this._nodeSession.on('Runtime.executionContextCreated', async event => {
         if (event.context.auxData && event.context.auxData.isDefault) {
-          this._nodeExecutionContext = new js.ExecutionContext(this, new _crExecutionContext.CRExecutionContext(this._nodeSession, event.context));
-          f(await js.evaluate(this._nodeExecutionContext, false /* returnByValue */, `process.mainModule.require('electron')`));
+          this._nodeExecutionContext = new js.ExecutionContext(this, new _crExecutionContext.CRExecutionContext(this._nodeSession, event.context), 'electron');
+          const source = `process.mainModule.require('electron')`;
+          f(await this._nodeExecutionContext.rawEvaluateHandle(source).then(objectId => new js.JSHandle(this._nodeExecutionContext, 'object', 'ElectronModule', objectId)));
         }
       });
     });
@@ -72,7 +73,7 @@ class ElectronApplication extends _instrumentation.SdkObject {
       const electronHandle = await this._nodeElectronHandlePromise;
       await electronHandle.evaluate(({
         app
-      }) => app.quit());
+      }) => app.quit()).catch(() => {});
     });
   }
   async initialize() {
@@ -126,7 +127,7 @@ class Electron extends _instrumentation.SdkObject {
     controller.setLogName('browser');
     return controller.run(async progress => {
       let app = undefined;
-      const electronArguments = [require.resolve('./loader'), '--inspect=0', '--remote-debugging-port=0', options.cwd || process.cwd(), ...args];
+      const electronArguments = ['--inspect=0', '--remote-debugging-port=0', ...args];
       if (_os.default.platform() === 'linux') {
         const runningAsRoot = process.geteuid && process.geteuid() === 0;
         if (runningAsRoot && electronArguments.indexOf('--no-sandbox') === -1) electronArguments.push('--no-sandbox');
@@ -148,6 +149,9 @@ class Electron extends _instrumentation.SdkObject {
           }
           throw error;
         }
+        // Only use our own loader for non-packaged apps.
+        // Packaged apps might have their own command line handling.
+        electronArguments.unshift('-r', require.resolve('./loader'));
       }
 
       // When debugging Playwright test that runs Electron, NODE_OPTIONS

@@ -8,7 +8,7 @@ var _processLauncher = require("../utils/processLauncher");
 var _instrumentation = require("./instrumentation");
 var _recorder = require("./recorder");
 var _recorderApp = require("./recorder/recorderApp");
-var _locatorGenerators = require("./isomorphic/locatorGenerators");
+var _locatorGenerators = require("../utils/isomorphic/locatorGenerators");
 /**
  * Copyright (c) Microsoft Corporation.
  *
@@ -100,13 +100,14 @@ class DebugController extends _instrumentation.SdkObject {
       } = await browser.newContextForReuse({}, internalMetadata);
       await context.newPage(internalMetadata);
     }
+    // Update test id attribute.
+    if (params.testIdAttributeName) {
+      for (const page of this._playwright.allPages()) page.context().selectors().setTestIdAttributeName(params.testIdAttributeName);
+    }
     // Toggle the mode.
     for (const recorder of await this._allRecorders()) {
       recorder.hideHighlightedSelecor();
-      if (params.mode === 'recording') {
-        recorder.setOutput(this._codegenId, params.file);
-        if (params.testIdAttributeName) recorder.setTestIdAttributeName(params.testIdAttributeName);
-      }
+      if (params.mode === 'recording') recorder.setOutput(this._codegenId, params.file);
       recorder.setMode(params.mode);
     }
     this.setAutoCloseEnabled(true);

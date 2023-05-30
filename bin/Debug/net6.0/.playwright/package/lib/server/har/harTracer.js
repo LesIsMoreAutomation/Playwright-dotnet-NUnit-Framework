@@ -12,8 +12,8 @@ var _utils = require("../../utils");
 var _eventsHelper = require("../../utils/eventsHelper");
 var _utilsBundle = require("../../utilsBundle");
 var _manualPromise = require("../../utils/manualPromise");
-var _userAgent = require("../../common/userAgent");
-var _netUtils = require("../../common/netUtils");
+var _userAgent = require("../../utils/userAgent");
+var _network2 = require("../../utils/network");
 var _frames = require("../frames");
 var _mimeType = require("../../utils/mimeType");
 function _getRequireWildcardCache(nodeInterop) { if (typeof WeakMap !== "function") return null; var cacheBabelInterop = new WeakMap(); var cacheNodeInterop = new WeakMap(); return (_getRequireWildcardCache = function (nodeInterop) { return nodeInterop ? cacheNodeInterop : cacheBabelInterop; })(nodeInterop); }
@@ -75,7 +75,7 @@ class HarTracer {
     }
   }
   _shouldIncludeEntryWithUrl(urlString) {
-    return !this._options.urlFilter || (0, _netUtils.urlMatches)(this._baseURL, urlString, this._options.urlFilter);
+    return !this._options.urlFilter || (0, _network2.urlMatches)(this._baseURL, urlString, this._options.urlFilter);
   }
   _entryForRequest(request) {
     return request[this._entrySymbol];
@@ -217,6 +217,20 @@ class HarTracer {
     const harEntry = this._entryForRequest(request);
     if (!harEntry) return;
     const page = (_request$frame3 = request.frame()) === null || _request$frame3 === void 0 ? void 0 : _request$frame3._page;
+
+    // In WebKit security details and server ip are reported in Network.loadingFinished, so we populate
+    // it here to not hang in case of long chunked responses, see https://github.com/microsoft/playwright/issues/21182.
+    if (!this._options.omitServerIP) {
+      this._addBarrier(page || request.serviceWorker(), response.serverAddr().then(server => {
+        if (server !== null && server !== void 0 && server.ipAddress) harEntry.serverIPAddress = server.ipAddress;
+        if (server !== null && server !== void 0 && server.port) harEntry._serverPort = server.port;
+      }));
+    }
+    if (!this._options.omitSecurityDetails) {
+      this._addBarrier(page || request.serviceWorker(), response.securityDetails().then(details => {
+        if (details) harEntry._securityDetails = details;
+      }));
+    }
     const httpVersion = response.httpVersion();
     harEntry.request.httpVersion = httpVersion;
     harEntry.response.httpVersion = httpVersion;
@@ -254,6 +268,11 @@ class HarTracer {
       if (this._started) this._delegate.onEntryFinished(harEntry);
     });
     this._addBarrier(page || request.serviceWorker(), promise);
+
+    // Respose end timing is only available after the response event was received.
+    const timing = response.timing();
+    harEntry.timings.receive = response.request()._responseEndTiming !== -1 ? _helper.helper.millisToRoundishMillis(response.request()._responseEndTiming - timing.responseStart) : -1;
+    this._computeHarEntryTotalTime(harEntry);
     if (!this._options.omitSizes) {
       this._addBarrier(page || request.serviceWorker(), response.sizes().then(sizes => {
         harEntry.response.bodySize = sizes.responseBodySize;
@@ -322,7 +341,7 @@ class HarTracer {
       const connect = timing.connectEnd !== -1 ? _helper.helper.millisToRoundishMillis(timing.connectEnd - timing.connectStart) : -1;
       const ssl = timing.connectEnd !== -1 ? _helper.helper.millisToRoundishMillis(timing.connectEnd - timing.secureConnectionStart) : -1;
       const wait = timing.responseStart !== -1 ? _helper.helper.millisToRoundishMillis(timing.responseStart - timing.requestStart) : -1;
-      const receive = response.request()._responseEndTiming !== -1 ? _helper.helper.millisToRoundishMillis(response.request()._responseEndTiming - timing.responseStart) : -1;
+      const receive = -1;
       harEntry.timings = {
         dns,
         connect,
@@ -331,18 +350,7 @@ class HarTracer {
         wait,
         receive
       };
-      harEntry.time = [dns, connect, ssl, wait, receive].reduce((pre, cur) => cur > 0 ? cur + pre : pre, 0);
-    }
-    if (!this._options.omitServerIP) {
-      this._addBarrier(page || request.serviceWorker(), response.serverAddr().then(server => {
-        if (server !== null && server !== void 0 && server.ipAddress) harEntry.serverIPAddress = server.ipAddress;
-        if (server !== null && server !== void 0 && server.port) harEntry._serverPort = server.port;
-      }));
-    }
-    if (!this._options.omitSecurityDetails) {
-      this._addBarrier(page || request.serviceWorker(), response.securityDetails().then(details => {
-        if (details) harEntry._securityDetails = details;
-      }));
+      this._computeHarEntryTotalTime(harEntry);
     }
     this._recordRequestOverrides(harEntry, request);
     this._addBarrier(page || request.serviceWorker(), request.rawRequestHeaders().then(headers => {
@@ -356,6 +364,9 @@ class HarTracer {
       const contentType = headers.find(header => header.name.toLowerCase() === 'content-type');
       if (contentType) harEntry.response.content.mimeType = contentType.value;
     }));
+  }
+  _computeHarEntryTotalTime(harEntry) {
+    harEntry.time = [harEntry.timings.dns, harEntry.timings.connect, harEntry.timings.ssl, harEntry.timings.wait, harEntry.timings.receive].reduce((pre, cur) => (cur || -1) > 0 ? cur + pre : pre, 0);
   }
   async flush() {
     await Promise.all(this._barrierPromises);

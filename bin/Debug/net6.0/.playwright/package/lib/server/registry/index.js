@@ -21,8 +21,8 @@ var util = _interopRequireWildcard(require("util"));
 var fs = _interopRequireWildcard(require("fs"));
 var _utilsBundle = require("../../utilsBundle");
 var _linuxUtils = require("../../utils/linuxUtils");
-var _netUtils = require("../../common/netUtils");
-var _userAgent = require("../../common/userAgent");
+var _network = require("../../utils/network");
+var _userAgent = require("../../utils/userAgent");
 var _utils = require("../../utils");
 var _fileUtils = require("../../utils/fileUtils");
 var _hostPlatform = require("../../utils/hostPlatform");
@@ -92,6 +92,7 @@ const DOWNLOAD_PATHS = {
     'ubuntu20.04-arm64': 'builds/chromium/%s/chromium-linux-arm64.zip',
     'ubuntu22.04-arm64': 'builds/chromium/%s/chromium-linux-arm64.zip',
     'debian11': 'builds/chromium/%s/chromium-linux.zip',
+    'debian11-arm64': 'builds/chromium/%s/chromium-linux-arm64.zip',
     'mac10.13': 'builds/chromium/%s/chromium-mac.zip',
     'mac10.14': 'builds/chromium/%s/chromium-mac.zip',
     'mac10.15': 'builds/chromium/%s/chromium-mac.zip',
@@ -112,6 +113,7 @@ const DOWNLOAD_PATHS = {
     'ubuntu20.04-arm64': 'builds/chromium-tip-of-tree/%s/chromium-tip-of-tree-linux-arm64.zip',
     'ubuntu22.04-arm64': 'builds/chromium-tip-of-tree/%s/chromium-tip-of-tree-linux-arm64.zip',
     'debian11': 'builds/chromium-tip-of-tree/%s/chromium-tip-of-tree-linux.zip',
+    'debian11-arm64': 'builds/chromium-tip-of-tree/%s/chromium-tip-of-tree-linux-arm64.zip',
     'mac10.13': 'builds/chromium-tip-of-tree/%s/chromium-tip-of-tree-mac.zip',
     'mac10.14': 'builds/chromium-tip-of-tree/%s/chromium-tip-of-tree-mac.zip',
     'mac10.15': 'builds/chromium-tip-of-tree/%s/chromium-tip-of-tree-mac.zip',
@@ -132,6 +134,7 @@ const DOWNLOAD_PATHS = {
     'ubuntu20.04-arm64': 'builds/chromium/%s/chromium-with-symbols-linux-arm64.zip',
     'ubuntu22.04-arm64': 'builds/chromium/%s/chromium-with-symbols-linux-arm64.zip',
     'debian11': 'builds/chromium/%s/chromium-with-symbols-linux.zip',
+    'debian11-arm64': 'builds/chromium/%s/chromium-with-symbols-linux-arm64.zip',
     'mac10.13': 'builds/chromium/%s/chromium-with-symbols-mac.zip',
     'mac10.14': 'builds/chromium/%s/chromium-with-symbols-mac.zip',
     'mac10.15': 'builds/chromium/%s/chromium-with-symbols-mac.zip',
@@ -152,6 +155,7 @@ const DOWNLOAD_PATHS = {
     'ubuntu20.04-arm64': 'builds/firefox/%s/firefox-ubuntu-20.04-arm64.zip',
     'ubuntu22.04-arm64': 'builds/firefox/%s/firefox-ubuntu-22.04-arm64.zip',
     'debian11': 'builds/firefox/%s/firefox-debian-11.zip',
+    'debian11-arm64': 'builds/firefox/%s/firefox-debian-11-arm64.zip',
     'mac10.13': 'builds/firefox/%s/firefox-mac-11.zip',
     'mac10.14': 'builds/firefox/%s/firefox-mac-11.zip',
     'mac10.15': 'builds/firefox/%s/firefox-mac-11.zip',
@@ -172,6 +176,7 @@ const DOWNLOAD_PATHS = {
     'ubuntu20.04-arm64': undefined,
     'ubuntu22.04-arm64': 'builds/firefox-beta/%s/firefox-beta-ubuntu-22.04-arm64.zip',
     'debian11': 'builds/firefox-beta/%s/firefox-beta-debian-11.zip',
+    'debian11-arm64': 'builds/firefox-beta/%s/firefox-beta-debian-11-arm64.zip',
     'mac10.13': 'builds/firefox-beta/%s/firefox-beta-mac-11.zip',
     'mac10.14': 'builds/firefox-beta/%s/firefox-beta-mac-11.zip',
     'mac10.15': 'builds/firefox-beta/%s/firefox-beta-mac-11.zip',
@@ -185,13 +190,14 @@ const DOWNLOAD_PATHS = {
     '<unknown>': undefined,
     'generic-linux': 'builds/webkit/%s/webkit-ubuntu-20.04.zip',
     'generic-linux-arm64': 'builds/webkit/%s/webkit-ubuntu-20.04-arm64.zip',
-    'ubuntu18.04': 'builds/webkit/%s/webkit-ubuntu-18.04.zip',
+    'ubuntu18.04': 'builds/deprecated-webkit-ubuntu-18.04/%s/deprecated-webkit-ubuntu-18.04.zip',
     'ubuntu20.04': 'builds/webkit/%s/webkit-ubuntu-20.04.zip',
     'ubuntu22.04': 'builds/webkit/%s/webkit-ubuntu-22.04.zip',
     'ubuntu18.04-arm64': undefined,
     'ubuntu20.04-arm64': 'builds/webkit/%s/webkit-ubuntu-20.04-arm64.zip',
     'ubuntu22.04-arm64': 'builds/webkit/%s/webkit-ubuntu-22.04-arm64.zip',
     'debian11': 'builds/webkit/%s/webkit-debian-11.zip',
+    'debian11-arm64': 'builds/webkit/%s/webkit-debian-11-arm64.zip',
     'mac10.13': undefined,
     'mac10.14': 'builds/deprecated-webkit-mac-10.14/%s/deprecated-webkit-mac-10.14.zip',
     'mac10.15': 'builds/deprecated-webkit-mac-10.15/%s/deprecated-webkit-mac-10.15.zip',
@@ -212,6 +218,7 @@ const DOWNLOAD_PATHS = {
     'ubuntu20.04-arm64': 'builds/ffmpeg/%s/ffmpeg-linux-arm64.zip',
     'ubuntu22.04-arm64': 'builds/ffmpeg/%s/ffmpeg-linux-arm64.zip',
     'debian11': 'builds/ffmpeg/%s/ffmpeg-linux.zip',
+    'debian11-arm64': 'builds/ffmpeg/%s/ffmpeg-linux-arm64.zip',
     'mac10.13': 'builds/ffmpeg/%s/ffmpeg-mac.zip',
     'mac10.14': 'builds/ffmpeg/%s/ffmpeg-mac.zip',
     'mac10.15': 'builds/ffmpeg/%s/ffmpeg-mac.zip',
@@ -545,11 +552,11 @@ class Registry {
   }
   async _validateHostRequirements(sdkLanguage, browserName, browserDirectory, linuxLddDirectories, dlOpenLibraries, windowsExeAndDllDirectories) {
     if ((0, _utils.getAsBooleanFromENV)('PLAYWRIGHT_SKIP_VALIDATE_HOST_REQUIREMENTS')) {
-      process.stdout.write('Skipping host requirements validation logic because `PLAYWRIGHT_SKIP_VALIDATE_HOST_REQUIREMENTS` env variable is set.\n');
+      process.stderr.write('Skipping host requirements validation logic because `PLAYWRIGHT_SKIP_VALIDATE_HOST_REQUIREMENTS` env variable is set.\n');
       return;
     }
     const distributionInfo = await (0, _linuxUtils.getLinuxDistributionInfo)();
-    if (browserName === 'firefox' && (distributionInfo === null || distributionInfo === void 0 ? void 0 : distributionInfo.id) === 'ubuntu' && (distributionInfo === null || distributionInfo === void 0 ? void 0 : distributionInfo.version) === '16.04') throw new Error(`Cannot launch Firefox on Ubuntu 16.04! Minimum required Ubuntu version for Firefox browser is 18.04`);
+    if (browserName === 'firefox' && (distributionInfo === null || distributionInfo === void 0 ? void 0 : distributionInfo.id) === 'ubuntu' && (distributionInfo === null || distributionInfo === void 0 ? void 0 : distributionInfo.version) === '16.04') throw new Error(`Cannot launch Firefox on Ubuntu 16.04! Minimum required Ubuntu version for Firefox browser is 20.04`);
     if (os.platform() === 'linux') return await (0, _dependencies.validateDependenciesLinux)(sdkLanguage, linuxLddDirectories.map(d => _path.default.join(browserDirectory, d)), dlOpenLibraries);
     if (os.platform() === 'win32' && os.arch() === 'x64') return await (0, _dependencies.validateDependenciesWindows)(windowsExeAndDllDirectories.map(d => _path.default.join(browserDirectory, d)));
   }
@@ -648,7 +655,7 @@ class Registry {
   async _installMSEdgeChannel(channel, scripts) {
     const scriptArgs = [];
     if (process.platform !== 'linux') {
-      const products = lowercaseAllKeys(JSON.parse(await (0, _netUtils.fetchData)({
+      const products = lowercaseAllKeys(JSON.parse(await (0, _network.fetchData)({
         url: 'https://edgeupdates.microsoft.com/api/products'
       })));
       const productName = {
@@ -726,7 +733,8 @@ class Registry {
           const usedBrowserPath = descriptor.dir;
           const browserRevision = parseInt(descriptor.revision, 10);
           // Old browser installations don't have marker file.
-          const shouldHaveMarkerFile = browserName === 'chromium' && browserRevision >= 786218 || browserName === 'firefox' && browserRevision >= 1128 || browserName === 'webkit' && browserRevision >= 1307 ||
+          // We switched chromium from 999999 to 1000, 300000 is the new Y2K.
+          const shouldHaveMarkerFile = browserName === 'chromium' && (browserRevision >= 786218 || browserRevision < 300000) || browserName === 'firefox' && browserRevision >= 1128 || browserName === 'webkit' && browserRevision >= 1307 ||
           // All new applications have a marker file right away.
           browserName !== 'firefox' && browserName !== 'chromium' && browserName !== 'webkit';
           if (!shouldHaveMarkerFile || (await (0, _fileUtils.existsAsync)(markerFilePath(usedBrowserPath)))) usedBrowserPaths.add(usedBrowserPath);
@@ -756,7 +764,7 @@ function buildPlaywrightCLICommand(sdkLanguage, parameters) {
     case 'python':
       return `playwright ${parameters}`;
     case 'java':
-      return `mvn exec:java -e -Dexec.mainClass=com.microsoft.playwright.CLI -Dexec.args="${parameters}"`;
+      return `mvn exec:java -e -D exec.mainClass=com.microsoft.playwright.CLI -D exec.args="${parameters}"`;
     case 'csharp':
       return `pwsh bin/Debug/netX/playwright.ps1 ${parameters}`;
     default:
