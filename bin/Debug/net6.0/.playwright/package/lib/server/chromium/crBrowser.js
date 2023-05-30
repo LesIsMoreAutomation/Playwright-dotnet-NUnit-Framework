@@ -188,6 +188,20 @@ class CRBrowser extends _browser.Browser {
       context.emit(CRBrowserContext.CREvents.ServiceWorker, serviceWorker);
       return;
     }
+
+    // Detach from any targets we are not interested in, to avoid side-effects.
+    //
+    // One example of a side effect: upon shared worker restart, we receive
+    // Inspector.targetReloadedAfterCrash and backend waits for Runtime.runIfWaitingForDebugger
+    // from any attached client. If we do not resume, shared worker will stall.
+    //
+    // Ideally, detaching should resume any target, but there is a bug in the backend,
+    // so we must Runtime.runIfWaitingForDebugger first.
+    session._sendMayFail('Runtime.runIfWaitingForDebugger').then(() => {
+      this._session._sendMayFail('Target.detachFromTarget', {
+        sessionId
+      });
+    });
   }
   _onDetachedFromTarget(payload) {
     const targetId = payload.targetId;
@@ -219,7 +233,12 @@ class CRBrowser extends _browser.Browser {
   }
   _onDownloadWillBegin(payload) {
     const page = this._findOwningPage(payload.frameId);
-    (0, _utils.assert)(page, 'Download started in unknown page: ' + JSON.stringify(payload));
+    if (!page) {
+      // There might be no page when download originates from something unusual, like
+      // a DevTools window or maybe an extension page.
+      // See https://github.com/microsoft/playwright/issues/22551.
+      return;
+    }
     page.willBeginDownload();
     let originPage = page._initializedPage;
     // If it's a new window download, report it on the opener page.
@@ -454,6 +473,9 @@ class CRBrowserContext extends _browserContext.BrowserContext {
         this._browser._backgroundPages.delete(targetId);
       }
     }
+  }
+  async clearCache() {
+    for (const page of this._crPages()) await page._mainFrameSession._networkManager.clearCache();
   }
   async cancelDownload(guid) {
     // The upstream CDP method is implemented in a way that no explicit error would be given

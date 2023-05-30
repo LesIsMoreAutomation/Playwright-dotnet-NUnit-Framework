@@ -46,10 +46,6 @@ class Browser extends _instrumentation.SdkObject {
   }
   async newContextForReuse(params, metadata) {
     const hash = _browserContext.BrowserContext.reusableContextHash(params);
-    for (const context of this.contexts()) {
-      var _this$_contextForReus;
-      if (context !== ((_this$_contextForReus = this._contextForReuse) === null || _this$_contextForReus === void 0 ? void 0 : _this$_contextForReus.context)) await context.close(metadata);
-    }
     if (!this._contextForReuse || hash !== this._contextForReuse.hash || !this._contextForReuse.context.canResetForReuse()) {
       if (this._contextForReuse) await this._contextForReuse.context.close(metadata);
       this._contextForReuse = {
@@ -61,6 +57,7 @@ class Browser extends _instrumentation.SdkObject {
         needsReset: false
       };
     }
+    await this._contextForReuse.context.stopPendingOperations();
     return {
       context: this._contextForReuse.context,
       needsReset: true

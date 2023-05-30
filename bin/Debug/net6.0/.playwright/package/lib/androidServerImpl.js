@@ -46,8 +46,7 @@ class AndroidServerLauncherImpl {
     const server = new _playwrightServer.PlaywrightServer({
       path,
       maxConnections: 1,
-      preLaunchedAndroidDevice: device,
-      browserProxyMode: 'disabled'
+      preLaunchedAndroidDevice: device
     });
     const wsEndpoint = await server.listen(options.port);
 

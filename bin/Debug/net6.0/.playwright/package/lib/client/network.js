@@ -15,7 +15,7 @@ var _utils = require("../utils");
 var _manualPromise = require("../utils/manualPromise");
 var _events = require("./events");
 var _waiter = require("./waiter");
-var _netUtils = require("../common/netUtils");
+var _network = require("../utils/network");
 var _multimap = require("../utils/multimap");
 var _fetch = require("./fetch");
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
@@ -43,20 +43,18 @@ class Request extends _channelOwner.ChannelOwner {
     return request ? Request.from(request) : null;
   }
   constructor(parent, type, guid, initializer) {
-    var _initializer$postData;
     super(parent, type, guid, initializer);
     this._redirectedFrom = null;
     this._redirectedTo = null;
     this._failureText = null;
     this._provisionalHeaders = void 0;
     this._actualHeadersPromise = void 0;
-    this._postData = void 0;
     this._timing = void 0;
     this._fallbackOverrides = {};
     this._redirectedFrom = Request.fromNullable(initializer.redirectedFrom);
     if (this._redirectedFrom) this._redirectedFrom._redirectedTo = this;
     this._provisionalHeaders = new RawHeaders(initializer.headers);
-    this._postData = (_initializer$postData = initializer.postData) !== null && _initializer$postData !== void 0 ? _initializer$postData : null;
+    this._fallbackOverrides.postDataBuffer = initializer.postData;
     this._timing = {
       startTime: 0,
       domainLookupStart: -1,
@@ -79,15 +77,11 @@ class Request extends _channelOwner.ChannelOwner {
     return this._fallbackOverrides.method || this._initializer.method;
   }
   postData() {
-    if (this._fallbackOverrides.postData) return this._fallbackOverrides.postData.toString('utf-8');
-    return this._postData ? this._postData.toString('utf8') : null;
+    var _this$_fallbackOverri;
+    return ((_this$_fallbackOverri = this._fallbackOverrides.postDataBuffer) === null || _this$_fallbackOverri === void 0 ? void 0 : _this$_fallbackOverri.toString('utf-8')) || null;
   }
   postDataBuffer() {
-    if (this._fallbackOverrides.postData) {
-      if ((0, _utils.isString)(this._fallbackOverrides.postData)) return Buffer.from(this._fallbackOverrides.postData, 'utf-8');
-      return this._fallbackOverrides.postData;
-    }
-    return this._postData;
+    return this._fallbackOverrides.postDataBuffer || null;
   }
   postDataJSON() {
     const postData = this.postData();
@@ -184,13 +178,17 @@ class Request extends _channelOwner.ChannelOwner {
     return this._redirectedTo ? this._redirectedTo._finalRequest() : this;
   }
   _applyFallbackOverrides(overrides) {
-    this._fallbackOverrides = {
-      ...this._fallbackOverrides,
-      ...overrides
-    };
+    if (overrides.url) this._fallbackOverrides.url = overrides.url;
+    if (overrides.method) this._fallbackOverrides.method = overrides.method;
+    if (overrides.headers) this._fallbackOverrides.headers = overrides.headers;
+    if ((0, _utils.isString)(overrides.postData)) this._fallbackOverrides.postDataBuffer = Buffer.from(overrides.postData, 'utf-8');else if (overrides.postData instanceof Buffer) this._fallbackOverrides.postDataBuffer = overrides.postData;else if (overrides.postData) this._fallbackOverrides.postDataBuffer = Buffer.from(JSON.stringify(overrides.postData), 'utf-8');
   }
   _fallbackOverridesForContinue() {
     return this._fallbackOverrides;
+  }
+  _targetClosedRace() {
+    var _this$serviceWorker, _this$frame$_page;
+    return ((_this$serviceWorker = this.serviceWorker()) === null || _this$serviceWorker === void 0 ? void 0 : _this$serviceWorker._closedRace) || ((_this$frame$_page = this.frame()._page) === null || _this$frame$_page === void 0 ? void 0 : _this$frame$_page._closedOrCrashedRace) || new _manualPromise.ScopedRace();
   }
 }
 exports.Request = Request;
@@ -206,11 +204,10 @@ class Route extends _channelOwner.ChannelOwner {
     return Request.from(this._initializer.request);
   }
   _raceWithTargetClose(promise) {
-    var _this$request$service, _this$request$frame$_;
     // When page closes or crashes, we catch any potential rejects from this Route.
     // Note that page could be missing when routing popup's initial request that
     // does not have a Page initialized just yet.
-    return Promise.race([promise, ((_this$request$service = this.request().serviceWorker()) === null || _this$request$service === void 0 ? void 0 : _this$request$service._closedPromise) || ((_this$request$frame$_ = this.request().frame()._page) === null || _this$request$frame$_ === void 0 ? void 0 : _this$request$frame$_._closedOrCrashedPromise) || Promise.resolve()]);
+    return this.request()._targetClosedRace().safeRace(promise);
   }
   _startHandling() {
     this._handlingPromise = new _manualPromise.ManualPromise();
@@ -224,6 +221,7 @@ class Route extends _channelOwner.ChannelOwner {
   async abort(errorCode) {
     this._checkNotHandled();
     await this._raceWithTargetClose(this._channel.abort({
+      requestUrl: this.request()._initializer.url,
       errorCode
     }));
     this._reportHandled(true);
@@ -234,6 +232,16 @@ class Route extends _channelOwner.ChannelOwner {
       url
     }));
     this._reportHandled(true);
+  }
+  async fetch(options = {}) {
+    return await this._wrapApiCall(async () => {
+      const context = this.request()._context();
+      return context.request._innerFetch({
+        request: this.request(),
+        data: options.postData,
+        ...options
+      });
+    });
   }
   async fulfill(options = {}) {
     this._checkNotHandled();
@@ -249,6 +257,10 @@ class Route extends _channelOwner.ChannelOwner {
       headers: headersOption,
       body
     } = options;
+    if (options.json !== undefined) {
+      (0, _utils.assert)(options.body === undefined, 'Can specify either body or json parameters');
+      body = JSON.stringify(options.json);
+    }
     if (options.response instanceof _fetch.APIResponse) {
       var _statusOption, _headersOption;
       (_statusOption = statusOption) !== null && _statusOption !== void 0 ? _statusOption : statusOption = options.response.status();
@@ -274,9 +286,10 @@ class Route extends _channelOwner.ChannelOwner {
     }
     const headers = {};
     for (const header of Object.keys(headersOption || {})) headers[header.toLowerCase()] = String(headersOption[header]);
-    if (options.contentType) headers['content-type'] = String(options.contentType);else if (options.path) headers['content-type'] = _utilsBundle.mime.getType(options.path) || 'application/octet-stream';
+    if (options.contentType) headers['content-type'] = String(options.contentType);else if (options.json) headers['content-type'] = 'application/json';else if (options.path) headers['content-type'] = _utilsBundle.mime.getType(options.path) || 'application/octet-stream';
     if (length && !('content-length' in headers)) headers['content-length'] = String(length);
     await this._raceWithTargetClose(this._channel.fulfill({
+      requestUrl: this.request()._initializer.url,
       status: statusOption || 200,
       headers: (0, _utils.headersObjectToArray)(headers),
       body,
@@ -301,12 +314,12 @@ class Route extends _channelOwner.ChannelOwner {
   async _innerContinue(internal = false) {
     const options = this.request()._fallbackOverridesForContinue();
     return await this._wrapApiCall(async () => {
-      const postDataBuffer = (0, _utils.isString)(options.postData) ? Buffer.from(options.postData, 'utf8') : options.postData;
       await this._raceWithTargetClose(this._channel.continue({
+        requestUrl: this.request()._initializer.url,
         url: options.url,
         method: options.method,
         headers: options.headers ? (0, _utils.headersObjectToArray)(options.headers) : undefined,
-        postData: postDataBuffer
+        postData: options.postDataBuffer
       }));
     }, !!internal);
   }
@@ -373,7 +386,7 @@ class Response extends _channelOwner.ChannelOwner {
     return (await this._actualHeaders()).getAll(name);
   }
   async finished() {
-    return this._finishedPromise.then(() => null);
+    return this.request()._targetClosedRace().race(this._finishedPromise);
   }
   async body() {
     return (await this._channel.body()).binary;
@@ -472,8 +485,24 @@ class RouteHandler {
     this.url = url;
     this.handler = handler;
   }
+  static prepareInterceptionPatterns(handlers) {
+    const patterns = [];
+    let all = false;
+    for (const handler of handlers) {
+      if ((0, _utils.isString)(handler.url)) patterns.push({
+        glob: handler.url
+      });else if ((0, _utils.isRegExp)(handler.url)) patterns.push({
+        regexSource: handler.url.source,
+        regexFlags: handler.url.flags
+      });else all = true;
+    }
+    if (all) return [{
+      glob: '**/*'
+    }];
+    return patterns;
+  }
   matches(requestURL) {
-    return (0, _netUtils.urlMatches)(this._baseURL, requestURL, this.url);
+    return (0, _network.urlMatches)(this._baseURL, requestURL, this.url);
   }
   async handle(route) {
     ++this.handledCount;

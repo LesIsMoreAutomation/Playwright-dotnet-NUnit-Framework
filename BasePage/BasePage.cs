@@ -54,6 +54,12 @@ namespace SpecFlowWithPlaywright.BasePage
             return await _page.InnerTextAsync(selector, new() { Timeout = 60000 });
         }
 
+        public async Task<IReadOnlyList<string>> GetAllValues(string selector)
+        {
+            return await _page.Locator(selector).AllTextContentsAsync();;
+        }
+
+
         public async Task SendTextAsync(string selector, string keys, PageFillOptions? pageFillOptions = null)
         {
             await _page.FillAsync(selector, keys, new() { Timeout = 60000 });
@@ -75,6 +81,14 @@ namespace SpecFlowWithPlaywright.BasePage
         {
             await _page.Locator("text=" + selector).First.ClickAsync();
         }
+        public Task<IReadOnlyList<IElementHandle>> QuerySelectorAll(string selector)
+        {
+            return _page.QuerySelectorAllAsync(selector);
+        }
+
+        // Existing code...
+
+        
         public async Task VerifyOnboardingDocs(string selector, string text)
         {
             Thread.Sleep(5000);

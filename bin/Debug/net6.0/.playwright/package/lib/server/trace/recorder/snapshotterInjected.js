@@ -33,6 +33,7 @@ function frameSnapshotStreamer(snapshotStreamer) {
   const kScrollLeftAttribute = '__playwright_scroll_left_';
   const kStyleSheetAttribute = '__playwright_style_sheet_';
   const kTargetAttribute = '__playwright_target__';
+  const kCustomElementsAttribute = '__playwright_custom_elements__';
 
   // Symbols for our own info on Nodes/StyleSheets.
   const kSnapshotFrameId = Symbol('__playwright_snapshot_frameid_');
@@ -79,6 +80,38 @@ function frameSnapshotStreamer(snapshotStreamer) {
         subtree: true
       };
       this._observer.observe(document, observerConfig);
+      this._refreshListenersWhenNeeded();
+    }
+    _refreshListenersWhenNeeded() {
+      this._refreshListeners();
+      const customEventName = '__playwright_snapshotter_global_listeners_check__';
+      let seenEvent = false;
+      const handleCustomEvent = () => seenEvent = true;
+      window.addEventListener(customEventName, handleCustomEvent);
+      const observer = new MutationObserver(entries => {
+        // Check for new documentElement in case we need to reinstall document listeners.
+        const newDocumentElement = entries.some(entry => Array.from(entry.addedNodes).includes(document.documentElement));
+        if (newDocumentElement) {
+          // New documentElement - let's check whether listeners are still here.
+          seenEvent = false;
+          window.dispatchEvent(new CustomEvent(customEventName));
+          if (!seenEvent) {
+            // Listener did not fire. Reattach the listener and notify.
+            window.addEventListener(customEventName, handleCustomEvent);
+            this._refreshListeners();
+          }
+        }
+      });
+      observer.observe(document, {
+        childList: true
+      });
+    }
+    _refreshListeners() {
+      document.addEventListener('__playwright_target__', event => {
+        if (!event.detail) return;
+        const callId = event.detail;
+        event.target.__playwright_target__ = callId;
+      });
     }
     _interceptNativeMethod(obj, method, cb) {
       const native = obj[method];
@@ -224,7 +257,7 @@ function frameSnapshotStreamer(snapshotStreamer) {
       // TODO: remove after chromium is fixed?
       const elementsToRestoreScrollPosition = new Set();
       const findElementsToRestoreScrollPositionRecursively = element => {
-        let shouldAdd = element.hasAttribute(kTargetAttribute);
+        let shouldAdd = ('__playwright_target__' in element);
         for (let child = element.firstElementChild; child; child = child.nextElementSibling) shouldAdd = shouldAdd || findElementsToRestoreScrollPositionRecursively(child);
         if (element.shadowRoot) {
           for (let child = element.shadowRoot.firstElementChild; child; child = child.nextElementSibling) shouldAdd = shouldAdd || findElementsToRestoreScrollPositionRecursively(child);
@@ -233,6 +266,7 @@ function frameSnapshotStreamer(snapshotStreamer) {
         return shouldAdd;
       };
       if (document.documentElement) findElementsToRestoreScrollPositionRecursively(document.documentElement);
+      const definedCustomElements = new Set();
       const visitNode = node => {
         const nodeType = node.nodeType;
         const nodeName = nodeType === Node.DOCUMENT_FRAGMENT_NODE ? 'template' : node.nodeName;
@@ -306,7 +340,9 @@ function frameSnapshotStreamer(snapshotStreamer) {
         };
         if (nodeType === Node.DOCUMENT_FRAGMENT_NODE) attrs[kShadowAttribute] = 'open';
         if (nodeType === Node.ELEMENT_NODE) {
+          var _window$customElement;
           const element = node;
+          if (element.localName.includes('-') && (_window$customElement = window.customElements) !== null && _window$customElement !== void 0 && _window$customElement.get(element.localName)) definedCustomElements.add(element.localName);
           if (nodeName === 'INPUT' || nodeName === 'TEXTAREA') {
             const value = element.value;
             expectValue(kValueAttribute);
@@ -340,6 +376,11 @@ function frameSnapshotStreamer(snapshotStreamer) {
             visitChild(element.shadowRoot);
             --shadowDomNesting;
           }
+          if ('__playwright_target__' in element) {
+            expectValue(kTargetAttribute);
+            expectValue(element['__playwright_target__']);
+            attrs[kTargetAttribute] = element['__playwright_target__'];
+          }
         }
         if (nodeName === 'HEAD') {
           ++headNesting;
@@ -368,6 +409,14 @@ function frameSnapshotStreamer(snapshotStreamer) {
           attrs[name] = value;
         }
 
+        // Process custom elements before bailing out since they depend on JS, not the DOM.
+        if (nodeName === 'BODY' && definedCustomElements.size) {
+          const value = [...definedCustomElements].join(',');
+          expectValue(kCustomElementsAttribute);
+          expectValue(value);
+          attrs[kCustomElementsAttribute] = value;
+        }
+
         // We can skip attributes comparison because nothing else has changed,
         // and mutation observer didn't tell us about the attributes.
         if (equals && data.attributesCached && !shadowDomNesting) return checkAndReturn(result);
@@ -376,7 +425,7 @@ function frameSnapshotStreamer(snapshotStreamer) {
           for (let i = 0; i < element.attributes.length; i++) {
             const name = element.attributes[i].name;
             if (nodeName === 'LINK' && name === 'integrity') continue;
-            if (nodeName === 'IFRAME' && (name === 'src' || name === 'sandbox')) continue;
+            if (nodeName === 'IFRAME' && (name === 'src' || name === 'srcdoc' || name === 'sandbox')) continue;
             if (nodeName === 'FRAME' && name === 'src') continue;
             let value = element.attributes[i].value;
             if (nodeName === 'META') value = this.__sanitizeMetaAttribute(name, value, node.httpEquiv);else if (name === 'src' && nodeName === 'IMG') value = this._sanitizeUrl(value);else if (name === 'srcset' && nodeName === 'IMG') value = this._sanitizeSrcSet(value);else if (name === 'srcset' && nodeName === 'SOURCE') value = this._sanitizeSrcSet(value);else if (name === 'href' && nodeName === 'LINK') value = this._sanitizeUrl(value);else if (name.startsWith('on')) value = '';

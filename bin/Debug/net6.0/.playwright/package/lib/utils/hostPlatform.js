@@ -50,12 +50,13 @@ const hostPlatform = (() => {
     const distroInfo = (0, _linuxUtils.getLinuxDistributionInfoSync)();
 
     // Pop!_OS is ubuntu-based and has the same versions.
-    if ((distroInfo === null || distroInfo === void 0 ? void 0 : distroInfo.id) === 'ubuntu' || (distroInfo === null || distroInfo === void 0 ? void 0 : distroInfo.id) === 'pop') {
+    // KDE Neon is ubuntu-based and has the same versions.
+    if ((distroInfo === null || distroInfo === void 0 ? void 0 : distroInfo.id) === 'ubuntu' || (distroInfo === null || distroInfo === void 0 ? void 0 : distroInfo.id) === 'pop' || (distroInfo === null || distroInfo === void 0 ? void 0 : distroInfo.id) === 'neon') {
       if (parseInt(distroInfo.version, 10) <= 19) return 'ubuntu18.04' + archSuffix;
       if (parseInt(distroInfo.version, 10) <= 21) return 'ubuntu20.04' + archSuffix;
       return 'ubuntu22.04' + archSuffix;
     }
-    if ((distroInfo === null || distroInfo === void 0 ? void 0 : distroInfo.id) === 'debian' && (distroInfo === null || distroInfo === void 0 ? void 0 : distroInfo.version) === '11' && !archSuffix) return 'debian11';
+    if ((distroInfo === null || distroInfo === void 0 ? void 0 : distroInfo.id) === 'debian' && (distroInfo === null || distroInfo === void 0 ? void 0 : distroInfo.version) === '11') return 'debian11' + archSuffix;
     return 'generic-linux' + archSuffix;
   }
   if (platform === 'win32') return 'win64';

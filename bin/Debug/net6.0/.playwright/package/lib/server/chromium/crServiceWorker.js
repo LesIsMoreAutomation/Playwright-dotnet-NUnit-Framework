@@ -50,6 +50,10 @@ class CRServiceWorker extends _page.Worker {
     }
     session.send('Runtime.enable', {}).catch(e => {});
     session.send('Runtime.runIfWaitingForDebugger').catch(e => {});
+    session.on('Inspector.targetReloadedAfterCrash', () => {
+      // Resume service worker after restart.
+      session._sendMayFail('Runtime.runIfWaitingForDebugger', {});
+    });
   }
   async updateOffline(initial) {
     var _this$_networkManager;
@@ -93,16 +97,14 @@ class CRServiceWorker extends _page.Worker {
   requestStarted(request, route) {
     this._browserContext.emit(_browserContext.BrowserContext.Events.Request, request);
     if (route) {
+      var _this$_browserContext, _this$_browserContext2;
       const r = new network.Route(request, route);
-      if (this._browserContext._requestInterceptor) {
-        this._browserContext._requestInterceptor(r, request);
-        return;
-      }
+      if ((_this$_browserContext = (_this$_browserContext2 = this._browserContext)._requestInterceptor) !== null && _this$_browserContext !== void 0 && _this$_browserContext.call(_this$_browserContext2, r, request)) return;
       r.continue();
     }
   }
   _isNetworkInspectionEnabled() {
-    return this._browserContext._options.serviceWorkers === 'allow';
+    return this._browserContext._options.serviceWorkers !== 'block';
   }
 }
 exports.CRServiceWorker = CRServiceWorker;

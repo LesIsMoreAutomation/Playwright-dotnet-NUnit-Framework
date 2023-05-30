@@ -48,14 +48,23 @@ var _validatorPrimitives = require("./validatorPrimitives");
 
 _validatorPrimitives.scheme.StackFrame = (0, _validatorPrimitives.tObject)({
   file: _validatorPrimitives.tString,
-  line: (0, _validatorPrimitives.tOptional)(_validatorPrimitives.tNumber),
-  column: (0, _validatorPrimitives.tOptional)(_validatorPrimitives.tNumber),
+  line: _validatorPrimitives.tNumber,
+  column: _validatorPrimitives.tNumber,
   function: (0, _validatorPrimitives.tOptional)(_validatorPrimitives.tString)
 });
 _validatorPrimitives.scheme.Metadata = (0, _validatorPrimitives.tObject)({
-  stack: (0, _validatorPrimitives.tOptional)((0, _validatorPrimitives.tArray)((0, _validatorPrimitives.tType)('StackFrame'))),
+  location: (0, _validatorPrimitives.tOptional)((0, _validatorPrimitives.tObject)({
+    file: _validatorPrimitives.tString,
+    line: (0, _validatorPrimitives.tOptional)(_validatorPrimitives.tNumber),
+    column: (0, _validatorPrimitives.tOptional)(_validatorPrimitives.tNumber)
+  })),
   apiName: (0, _validatorPrimitives.tOptional)(_validatorPrimitives.tString),
-  internal: (0, _validatorPrimitives.tOptional)(_validatorPrimitives.tBoolean)
+  internal: (0, _validatorPrimitives.tOptional)(_validatorPrimitives.tBoolean),
+  wallTime: (0, _validatorPrimitives.tOptional)(_validatorPrimitives.tNumber)
+});
+_validatorPrimitives.scheme.ClientSideCallMetadata = (0, _validatorPrimitives.tObject)({
+  id: _validatorPrimitives.tNumber,
+  stack: (0, _validatorPrimitives.tOptional)((0, _validatorPrimitives.tArray)((0, _validatorPrimitives.tType)('StackFrame')))
 });
 _validatorPrimitives.scheme.Point = (0, _validatorPrimitives.tObject)({
   x: _validatorPrimitives.tNumber,
@@ -236,7 +245,10 @@ _validatorPrimitives.scheme.LifecycleEvent = (0, _validatorPrimitives.tEnum)(['l
 _validatorPrimitives.scheme.LocalUtilsInitializer = (0, _validatorPrimitives.tOptional)((0, _validatorPrimitives.tObject)({}));
 _validatorPrimitives.scheme.LocalUtilsZipParams = (0, _validatorPrimitives.tObject)({
   zipFile: _validatorPrimitives.tString,
-  entries: (0, _validatorPrimitives.tArray)((0, _validatorPrimitives.tType)('NameValue'))
+  entries: (0, _validatorPrimitives.tArray)((0, _validatorPrimitives.tType)('NameValue')),
+  stacksId: (0, _validatorPrimitives.tOptional)(_validatorPrimitives.tString),
+  mode: (0, _validatorPrimitives.tEnum)(['write', 'append']),
+  includeSources: _validatorPrimitives.tBoolean
 });
 _validatorPrimitives.scheme.LocalUtilsZipResult = (0, _validatorPrimitives.tOptional)((0, _validatorPrimitives.tObject)({}));
 _validatorPrimitives.scheme.LocalUtilsHarOpenParams = (0, _validatorPrimitives.tObject)({
@@ -274,13 +286,30 @@ _validatorPrimitives.scheme.LocalUtilsHarUnzipResult = (0, _validatorPrimitives.
 _validatorPrimitives.scheme.LocalUtilsConnectParams = (0, _validatorPrimitives.tObject)({
   wsEndpoint: _validatorPrimitives.tString,
   headers: (0, _validatorPrimitives.tOptional)(_validatorPrimitives.tAny),
+  exposeNetwork: (0, _validatorPrimitives.tOptional)(_validatorPrimitives.tString),
   slowMo: (0, _validatorPrimitives.tOptional)(_validatorPrimitives.tNumber),
   timeout: (0, _validatorPrimitives.tOptional)(_validatorPrimitives.tNumber),
   socksProxyRedirectPortForTest: (0, _validatorPrimitives.tOptional)(_validatorPrimitives.tNumber)
 });
 _validatorPrimitives.scheme.LocalUtilsConnectResult = (0, _validatorPrimitives.tObject)({
-  pipe: (0, _validatorPrimitives.tChannel)(['JsonPipe'])
+  pipe: (0, _validatorPrimitives.tChannel)(['JsonPipe']),
+  headers: (0, _validatorPrimitives.tArray)((0, _validatorPrimitives.tType)('NameValue'))
 });
+_validatorPrimitives.scheme.LocalUtilsTracingStartedParams = (0, _validatorPrimitives.tObject)({
+  tracesDir: (0, _validatorPrimitives.tOptional)(_validatorPrimitives.tString),
+  traceName: _validatorPrimitives.tString
+});
+_validatorPrimitives.scheme.LocalUtilsTracingStartedResult = (0, _validatorPrimitives.tObject)({
+  stacksId: _validatorPrimitives.tString
+});
+_validatorPrimitives.scheme.LocalUtilsAddStackToTracingNoReplyParams = (0, _validatorPrimitives.tObject)({
+  callData: (0, _validatorPrimitives.tType)('ClientSideCallMetadata')
+});
+_validatorPrimitives.scheme.LocalUtilsAddStackToTracingNoReplyResult = (0, _validatorPrimitives.tOptional)((0, _validatorPrimitives.tObject)({}));
+_validatorPrimitives.scheme.LocalUtilsTraceDiscardedParams = (0, _validatorPrimitives.tObject)({
+  stacksId: _validatorPrimitives.tString
+});
+_validatorPrimitives.scheme.LocalUtilsTraceDiscardedResult = (0, _validatorPrimitives.tOptional)((0, _validatorPrimitives.tObject)({}));
 _validatorPrimitives.scheme.RootInitializer = (0, _validatorPrimitives.tOptional)((0, _validatorPrimitives.tObject)({}));
 _validatorPrimitives.scheme.RootInitializeParams = (0, _validatorPrimitives.tObject)({
   sdkLanguage: (0, _validatorPrimitives.tEnum)(['javascript', 'python', 'java', 'csharp'])
@@ -325,7 +354,8 @@ _validatorPrimitives.scheme.PlaywrightNewRequestParams = (0, _validatorPrimitive
   extraHTTPHeaders: (0, _validatorPrimitives.tOptional)((0, _validatorPrimitives.tArray)((0, _validatorPrimitives.tType)('NameValue'))),
   httpCredentials: (0, _validatorPrimitives.tOptional)((0, _validatorPrimitives.tObject)({
     username: _validatorPrimitives.tString,
-    password: _validatorPrimitives.tString
+    password: _validatorPrimitives.tString,
+    origin: (0, _validatorPrimitives.tOptional)(_validatorPrimitives.tString)
   })),
   proxy: (0, _validatorPrimitives.tOptional)((0, _validatorPrimitives.tObject)({
     server: _validatorPrimitives.tString,
@@ -540,7 +570,8 @@ _validatorPrimitives.scheme.BrowserTypeLaunchPersistentContextParams = (0, _vali
   offline: (0, _validatorPrimitives.tOptional)(_validatorPrimitives.tBoolean),
   httpCredentials: (0, _validatorPrimitives.tOptional)((0, _validatorPrimitives.tObject)({
     username: _validatorPrimitives.tString,
-    password: _validatorPrimitives.tString
+    password: _validatorPrimitives.tString,
+    origin: (0, _validatorPrimitives.tOptional)(_validatorPrimitives.tString)
   })),
   deviceScaleFactor: (0, _validatorPrimitives.tOptional)(_validatorPrimitives.tNumber),
   isMobile: (0, _validatorPrimitives.tOptional)(_validatorPrimitives.tBoolean),
@@ -585,6 +616,10 @@ _validatorPrimitives.scheme.BrowserCloseParams = (0, _validatorPrimitives.tOptio
 _validatorPrimitives.scheme.BrowserCloseResult = (0, _validatorPrimitives.tOptional)((0, _validatorPrimitives.tObject)({}));
 _validatorPrimitives.scheme.BrowserKillForTestsParams = (0, _validatorPrimitives.tOptional)((0, _validatorPrimitives.tObject)({}));
 _validatorPrimitives.scheme.BrowserKillForTestsResult = (0, _validatorPrimitives.tOptional)((0, _validatorPrimitives.tObject)({}));
+_validatorPrimitives.scheme.BrowserDefaultUserAgentForTestParams = (0, _validatorPrimitives.tOptional)((0, _validatorPrimitives.tObject)({}));
+_validatorPrimitives.scheme.BrowserDefaultUserAgentForTestResult = (0, _validatorPrimitives.tObject)({
+  userAgent: _validatorPrimitives.tString
+});
 _validatorPrimitives.scheme.BrowserNewContextParams = (0, _validatorPrimitives.tObject)({
   noDefaultViewport: (0, _validatorPrimitives.tOptional)(_validatorPrimitives.tBoolean),
   viewport: (0, _validatorPrimitives.tOptional)((0, _validatorPrimitives.tObject)({
@@ -611,7 +646,8 @@ _validatorPrimitives.scheme.BrowserNewContextParams = (0, _validatorPrimitives.t
   offline: (0, _validatorPrimitives.tOptional)(_validatorPrimitives.tBoolean),
   httpCredentials: (0, _validatorPrimitives.tOptional)((0, _validatorPrimitives.tObject)({
     username: _validatorPrimitives.tString,
-    password: _validatorPrimitives.tString
+    password: _validatorPrimitives.tString,
+    origin: (0, _validatorPrimitives.tOptional)(_validatorPrimitives.tString)
   })),
   deviceScaleFactor: (0, _validatorPrimitives.tOptional)(_validatorPrimitives.tNumber),
   isMobile: (0, _validatorPrimitives.tOptional)(_validatorPrimitives.tBoolean),
@@ -671,7 +707,8 @@ _validatorPrimitives.scheme.BrowserNewContextForReuseParams = (0, _validatorPrim
   offline: (0, _validatorPrimitives.tOptional)(_validatorPrimitives.tBoolean),
   httpCredentials: (0, _validatorPrimitives.tOptional)((0, _validatorPrimitives.tObject)({
     username: _validatorPrimitives.tString,
-    password: _validatorPrimitives.tString
+    password: _validatorPrimitives.tString,
+    origin: (0, _validatorPrimitives.tOptional)(_validatorPrimitives.tString)
   })),
   deviceScaleFactor: (0, _validatorPrimitives.tOptional)(_validatorPrimitives.tNumber),
   isMobile: (0, _validatorPrimitives.tOptional)(_validatorPrimitives.tBoolean),
@@ -749,7 +786,13 @@ _validatorPrimitives.scheme.BrowserContextInitializer = (0, _validatorPrimitives
 _validatorPrimitives.scheme.BrowserContextBindingCallEvent = (0, _validatorPrimitives.tObject)({
   binding: (0, _validatorPrimitives.tChannel)(['BindingCall'])
 });
+_validatorPrimitives.scheme.BrowserContextConsoleEvent = (0, _validatorPrimitives.tObject)({
+  message: (0, _validatorPrimitives.tChannel)(['ConsoleMessage'])
+});
 _validatorPrimitives.scheme.BrowserContextCloseEvent = (0, _validatorPrimitives.tOptional)((0, _validatorPrimitives.tObject)({}));
+_validatorPrimitives.scheme.BrowserContextDialogEvent = (0, _validatorPrimitives.tObject)({
+  dialog: (0, _validatorPrimitives.tChannel)(['Dialog'])
+});
 _validatorPrimitives.scheme.BrowserContextPageEvent = (0, _validatorPrimitives.tObject)({
   page: (0, _validatorPrimitives.tChannel)(['Page'])
 });
@@ -842,14 +885,19 @@ _validatorPrimitives.scheme.BrowserContextSetGeolocationResult = (0, _validatorP
 _validatorPrimitives.scheme.BrowserContextSetHTTPCredentialsParams = (0, _validatorPrimitives.tObject)({
   httpCredentials: (0, _validatorPrimitives.tOptional)((0, _validatorPrimitives.tObject)({
     username: _validatorPrimitives.tString,
-    password: _validatorPrimitives.tString
+    password: _validatorPrimitives.tString,
+    origin: (0, _validatorPrimitives.tOptional)(_validatorPrimitives.tString)
   }))
 });
 _validatorPrimitives.scheme.BrowserContextSetHTTPCredentialsResult = (0, _validatorPrimitives.tOptional)((0, _validatorPrimitives.tObject)({}));
-_validatorPrimitives.scheme.BrowserContextSetNetworkInterceptionEnabledParams = (0, _validatorPrimitives.tObject)({
-  enabled: _validatorPrimitives.tBoolean
+_validatorPrimitives.scheme.BrowserContextSetNetworkInterceptionPatternsParams = (0, _validatorPrimitives.tObject)({
+  patterns: (0, _validatorPrimitives.tArray)((0, _validatorPrimitives.tObject)({
+    glob: (0, _validatorPrimitives.tOptional)(_validatorPrimitives.tString),
+    regexSource: (0, _validatorPrimitives.tOptional)(_validatorPrimitives.tString),
+    regexFlags: (0, _validatorPrimitives.tOptional)(_validatorPrimitives.tString)
+  }))
 });
-_validatorPrimitives.scheme.BrowserContextSetNetworkInterceptionEnabledResult = (0, _validatorPrimitives.tOptional)((0, _validatorPrimitives.tObject)({}));
+_validatorPrimitives.scheme.BrowserContextSetNetworkInterceptionPatternsResult = (0, _validatorPrimitives.tOptional)((0, _validatorPrimitives.tObject)({}));
 _validatorPrimitives.scheme.BrowserContextSetOfflineParams = (0, _validatorPrimitives.tObject)({
   offline: _validatorPrimitives.tBoolean
 });
@@ -865,6 +913,7 @@ _validatorPrimitives.scheme.BrowserContextRecorderSupplementEnableParams = (0, _
   language: (0, _validatorPrimitives.tOptional)(_validatorPrimitives.tString),
   mode: (0, _validatorPrimitives.tOptional)((0, _validatorPrimitives.tEnum)(['inspecting', 'recording'])),
   pauseOnNextStatement: (0, _validatorPrimitives.tOptional)(_validatorPrimitives.tBoolean),
+  testIdAttributeName: (0, _validatorPrimitives.tOptional)(_validatorPrimitives.tString),
   launchOptions: (0, _validatorPrimitives.tOptional)(_validatorPrimitives.tAny),
   contextOptions: (0, _validatorPrimitives.tOptional)(_validatorPrimitives.tAny),
   device: (0, _validatorPrimitives.tOptional)(_validatorPrimitives.tString),
@@ -901,7 +950,7 @@ _validatorPrimitives.scheme.BrowserContextCreateTempFileResult = (0, _validatorP
   writableStream: (0, _validatorPrimitives.tChannel)(['WritableStream'])
 });
 _validatorPrimitives.scheme.BrowserContextUpdateSubscriptionParams = (0, _validatorPrimitives.tObject)({
-  event: (0, _validatorPrimitives.tEnum)(['request', 'response', 'requestFinished', 'requestFailed']),
+  event: (0, _validatorPrimitives.tEnum)(['console', 'dialog', 'request', 'response', 'requestFinished', 'requestFailed']),
   enabled: _validatorPrimitives.tBoolean
 });
 _validatorPrimitives.scheme.BrowserContextUpdateSubscriptionResult = (0, _validatorPrimitives.tOptional)((0, _validatorPrimitives.tObject)({}));
@@ -918,13 +967,7 @@ _validatorPrimitives.scheme.PageBindingCallEvent = (0, _validatorPrimitives.tObj
   binding: (0, _validatorPrimitives.tChannel)(['BindingCall'])
 });
 _validatorPrimitives.scheme.PageCloseEvent = (0, _validatorPrimitives.tOptional)((0, _validatorPrimitives.tObject)({}));
-_validatorPrimitives.scheme.PageConsoleEvent = (0, _validatorPrimitives.tObject)({
-  message: (0, _validatorPrimitives.tChannel)(['ConsoleMessage'])
-});
 _validatorPrimitives.scheme.PageCrashEvent = (0, _validatorPrimitives.tOptional)((0, _validatorPrimitives.tObject)({}));
-_validatorPrimitives.scheme.PageDialogEvent = (0, _validatorPrimitives.tObject)({
-  dialog: (0, _validatorPrimitives.tChannel)(['Dialog'])
-});
 _validatorPrimitives.scheme.PageDownloadEvent = (0, _validatorPrimitives.tObject)({
   url: _validatorPrimitives.tString,
   suggestedFilename: _validatorPrimitives.tString,
@@ -1013,6 +1056,7 @@ _validatorPrimitives.scheme.PageExpectScreenshotParams = (0, _validatorPrimitive
     selector: _validatorPrimitives.tString
   })),
   comparatorOptions: (0, _validatorPrimitives.tOptional)((0, _validatorPrimitives.tObject)({
+    comparator: (0, _validatorPrimitives.tOptional)(_validatorPrimitives.tString),
     maxDiffPixels: (0, _validatorPrimitives.tOptional)(_validatorPrimitives.tNumber),
     maxDiffPixelRatio: (0, _validatorPrimitives.tOptional)(_validatorPrimitives.tNumber),
     threshold: (0, _validatorPrimitives.tOptional)(_validatorPrimitives.tNumber)
@@ -1059,10 +1103,14 @@ _validatorPrimitives.scheme.PageSetExtraHTTPHeadersParams = (0, _validatorPrimit
   headers: (0, _validatorPrimitives.tArray)((0, _validatorPrimitives.tType)('NameValue'))
 });
 _validatorPrimitives.scheme.PageSetExtraHTTPHeadersResult = (0, _validatorPrimitives.tOptional)((0, _validatorPrimitives.tObject)({}));
-_validatorPrimitives.scheme.PageSetNetworkInterceptionEnabledParams = (0, _validatorPrimitives.tObject)({
-  enabled: _validatorPrimitives.tBoolean
+_validatorPrimitives.scheme.PageSetNetworkInterceptionPatternsParams = (0, _validatorPrimitives.tObject)({
+  patterns: (0, _validatorPrimitives.tArray)((0, _validatorPrimitives.tObject)({
+    glob: (0, _validatorPrimitives.tOptional)(_validatorPrimitives.tString),
+    regexSource: (0, _validatorPrimitives.tOptional)(_validatorPrimitives.tString),
+    regexFlags: (0, _validatorPrimitives.tOptional)(_validatorPrimitives.tString)
+  }))
 });
-_validatorPrimitives.scheme.PageSetNetworkInterceptionEnabledResult = (0, _validatorPrimitives.tOptional)((0, _validatorPrimitives.tObject)({}));
+_validatorPrimitives.scheme.PageSetNetworkInterceptionPatternsResult = (0, _validatorPrimitives.tOptional)((0, _validatorPrimitives.tObject)({}));
 _validatorPrimitives.scheme.PageSetViewportSizeParams = (0, _validatorPrimitives.tObject)({
   viewportSize: (0, _validatorPrimitives.tObject)({
     width: _validatorPrimitives.tNumber,
@@ -1195,7 +1243,7 @@ _validatorPrimitives.scheme.PageStopCSSCoverageResult = (0, _validatorPrimitives
 _validatorPrimitives.scheme.PageBringToFrontParams = (0, _validatorPrimitives.tOptional)((0, _validatorPrimitives.tObject)({}));
 _validatorPrimitives.scheme.PageBringToFrontResult = (0, _validatorPrimitives.tOptional)((0, _validatorPrimitives.tObject)({}));
 _validatorPrimitives.scheme.PageUpdateSubscriptionParams = (0, _validatorPrimitives.tObject)({
-  event: (0, _validatorPrimitives.tEnum)(['fileChooser', 'request', 'response', 'requestFinished', 'requestFailed']),
+  event: (0, _validatorPrimitives.tEnum)(['console', 'dialog', 'fileChooser', 'request', 'response', 'requestFinished', 'requestFailed']),
   enabled: _validatorPrimitives.tBoolean
 });
 _validatorPrimitives.scheme.PageUpdateSubscriptionResult = (0, _validatorPrimitives.tOptional)((0, _validatorPrimitives.tObject)({}));
@@ -1321,6 +1369,7 @@ _validatorPrimitives.scheme.FrameDispatchEventResult = (0, _validatorPrimitives.
 _validatorPrimitives.scheme.FrameEvaluateExpressionParams = (0, _validatorPrimitives.tObject)({
   expression: _validatorPrimitives.tString,
   isFunction: (0, _validatorPrimitives.tOptional)(_validatorPrimitives.tBoolean),
+  exposeUtilityScript: (0, _validatorPrimitives.tOptional)(_validatorPrimitives.tBoolean),
   arg: (0, _validatorPrimitives.tType)('SerializedArgument')
 });
 _validatorPrimitives.scheme.FrameEvaluateExpressionResult = (0, _validatorPrimitives.tObject)({
@@ -1489,6 +1538,7 @@ _validatorPrimitives.scheme.FrameSelectOptionParams = (0, _validatorPrimitives.t
   strict: (0, _validatorPrimitives.tOptional)(_validatorPrimitives.tBoolean),
   elements: (0, _validatorPrimitives.tOptional)((0, _validatorPrimitives.tArray)((0, _validatorPrimitives.tChannel)(['ElementHandle']))),
   options: (0, _validatorPrimitives.tOptional)((0, _validatorPrimitives.tArray)((0, _validatorPrimitives.tObject)({
+    valueOrLabel: (0, _validatorPrimitives.tOptional)(_validatorPrimitives.tString),
     value: (0, _validatorPrimitives.tOptional)(_validatorPrimitives.tString),
     label: (0, _validatorPrimitives.tOptional)(_validatorPrimitives.tString),
     index: (0, _validatorPrimitives.tOptional)(_validatorPrimitives.tNumber)
@@ -1607,6 +1657,7 @@ _validatorPrimitives.scheme.FrameExpectParams = (0, _validatorPrimitives.tObject
 _validatorPrimitives.scheme.FrameExpectResult = (0, _validatorPrimitives.tObject)({
   matches: _validatorPrimitives.tBoolean,
   received: (0, _validatorPrimitives.tOptional)((0, _validatorPrimitives.tType)('SerializedValue')),
+  timedOut: (0, _validatorPrimitives.tOptional)(_validatorPrimitives.tBoolean),
   log: (0, _validatorPrimitives.tOptional)((0, _validatorPrimitives.tArray)(_validatorPrimitives.tString))
 });
 _validatorPrimitives.scheme.WorkerInitializer = (0, _validatorPrimitives.tObject)({
@@ -1683,6 +1734,12 @@ _validatorPrimitives.scheme.JSHandleJsonValueResult = (0, _validatorPrimitives.t
   value: (0, _validatorPrimitives.tType)('SerializedValue')
 });
 _validatorPrimitives.scheme.ElementHandleJsonValueResult = (0, _validatorPrimitives.tType)('JSHandleJsonValueResult');
+_validatorPrimitives.scheme.JSHandleObjectCountParams = (0, _validatorPrimitives.tOptional)((0, _validatorPrimitives.tObject)({}));
+_validatorPrimitives.scheme.ElementHandleObjectCountParams = (0, _validatorPrimitives.tType)('JSHandleObjectCountParams');
+_validatorPrimitives.scheme.JSHandleObjectCountResult = (0, _validatorPrimitives.tObject)({
+  count: _validatorPrimitives.tNumber
+});
+_validatorPrimitives.scheme.ElementHandleObjectCountResult = (0, _validatorPrimitives.tType)('JSHandleObjectCountResult');
 _validatorPrimitives.scheme.ElementHandleInitializer = (0, _validatorPrimitives.tObject)({
   preview: _validatorPrimitives.tString
 });
@@ -1856,6 +1913,7 @@ _validatorPrimitives.scheme.ElementHandleScrollIntoViewIfNeededResult = (0, _val
 _validatorPrimitives.scheme.ElementHandleSelectOptionParams = (0, _validatorPrimitives.tObject)({
   elements: (0, _validatorPrimitives.tOptional)((0, _validatorPrimitives.tArray)((0, _validatorPrimitives.tChannel)(['ElementHandle']))),
   options: (0, _validatorPrimitives.tOptional)((0, _validatorPrimitives.tArray)((0, _validatorPrimitives.tObject)({
+    valueOrLabel: (0, _validatorPrimitives.tOptional)(_validatorPrimitives.tString),
     value: (0, _validatorPrimitives.tOptional)(_validatorPrimitives.tString),
     label: (0, _validatorPrimitives.tOptional)(_validatorPrimitives.tString),
     index: (0, _validatorPrimitives.tOptional)(_validatorPrimitives.tNumber)
@@ -1958,14 +2016,16 @@ _validatorPrimitives.scheme.RouteRedirectNavigationRequestParams = (0, _validato
 });
 _validatorPrimitives.scheme.RouteRedirectNavigationRequestResult = (0, _validatorPrimitives.tOptional)((0, _validatorPrimitives.tObject)({}));
 _validatorPrimitives.scheme.RouteAbortParams = (0, _validatorPrimitives.tObject)({
-  errorCode: (0, _validatorPrimitives.tOptional)(_validatorPrimitives.tString)
+  errorCode: (0, _validatorPrimitives.tOptional)(_validatorPrimitives.tString),
+  requestUrl: _validatorPrimitives.tString
 });
 _validatorPrimitives.scheme.RouteAbortResult = (0, _validatorPrimitives.tOptional)((0, _validatorPrimitives.tObject)({}));
 _validatorPrimitives.scheme.RouteContinueParams = (0, _validatorPrimitives.tObject)({
   url: (0, _validatorPrimitives.tOptional)(_validatorPrimitives.tString),
   method: (0, _validatorPrimitives.tOptional)(_validatorPrimitives.tString),
   headers: (0, _validatorPrimitives.tOptional)((0, _validatorPrimitives.tArray)((0, _validatorPrimitives.tType)('NameValue'))),
-  postData: (0, _validatorPrimitives.tOptional)(_validatorPrimitives.tBinary)
+  postData: (0, _validatorPrimitives.tOptional)(_validatorPrimitives.tBinary),
+  requestUrl: _validatorPrimitives.tString
 });
 _validatorPrimitives.scheme.RouteContinueResult = (0, _validatorPrimitives.tOptional)((0, _validatorPrimitives.tObject)({}));
 _validatorPrimitives.scheme.RouteFulfillParams = (0, _validatorPrimitives.tObject)({
@@ -1973,7 +2033,8 @@ _validatorPrimitives.scheme.RouteFulfillParams = (0, _validatorPrimitives.tObjec
   headers: (0, _validatorPrimitives.tOptional)((0, _validatorPrimitives.tArray)((0, _validatorPrimitives.tType)('NameValue'))),
   body: (0, _validatorPrimitives.tOptional)(_validatorPrimitives.tString),
   isBase64: (0, _validatorPrimitives.tOptional)(_validatorPrimitives.tBoolean),
-  fetchResponseUid: (0, _validatorPrimitives.tOptional)(_validatorPrimitives.tString)
+  fetchResponseUid: (0, _validatorPrimitives.tOptional)(_validatorPrimitives.tString),
+  requestUrl: _validatorPrimitives.tString
 });
 _validatorPrimitives.scheme.RouteFulfillResult = (0, _validatorPrimitives.tOptional)((0, _validatorPrimitives.tObject)({}));
 _validatorPrimitives.scheme.ResourceTiming = (0, _validatorPrimitives.tObject)({
@@ -2049,6 +2110,7 @@ _validatorPrimitives.scheme.WebSocketSocketErrorEvent = (0, _validatorPrimitives
 });
 _validatorPrimitives.scheme.WebSocketCloseEvent = (0, _validatorPrimitives.tOptional)((0, _validatorPrimitives.tObject)({}));
 _validatorPrimitives.scheme.ConsoleMessageInitializer = (0, _validatorPrimitives.tObject)({
+  page: (0, _validatorPrimitives.tChannel)(['Page']),
   type: _validatorPrimitives.tString,
   text: _validatorPrimitives.tString,
   args: (0, _validatorPrimitives.tArray)((0, _validatorPrimitives.tChannel)(['ElementHandle', 'JSHandle'])),
@@ -2073,6 +2135,7 @@ _validatorPrimitives.scheme.BindingCallResolveParams = (0, _validatorPrimitives.
 });
 _validatorPrimitives.scheme.BindingCallResolveResult = (0, _validatorPrimitives.tOptional)((0, _validatorPrimitives.tObject)({}));
 _validatorPrimitives.scheme.DialogInitializer = (0, _validatorPrimitives.tObject)({
+  page: (0, _validatorPrimitives.tOptional)((0, _validatorPrimitives.tChannel)(['Page'])),
   type: _validatorPrimitives.tString,
   message: _validatorPrimitives.tString,
   defaultValue: _validatorPrimitives.tString
@@ -2092,15 +2155,18 @@ _validatorPrimitives.scheme.TracingTracingStartParams = (0, _validatorPrimitives
 });
 _validatorPrimitives.scheme.TracingTracingStartResult = (0, _validatorPrimitives.tOptional)((0, _validatorPrimitives.tObject)({}));
 _validatorPrimitives.scheme.TracingTracingStartChunkParams = (0, _validatorPrimitives.tObject)({
+  name: (0, _validatorPrimitives.tOptional)(_validatorPrimitives.tString),
   title: (0, _validatorPrimitives.tOptional)(_validatorPrimitives.tString)
 });
-_validatorPrimitives.scheme.TracingTracingStartChunkResult = (0, _validatorPrimitives.tOptional)((0, _validatorPrimitives.tObject)({}));
+_validatorPrimitives.scheme.TracingTracingStartChunkResult = (0, _validatorPrimitives.tObject)({
+  traceName: _validatorPrimitives.tString
+});
 _validatorPrimitives.scheme.TracingTracingStopChunkParams = (0, _validatorPrimitives.tObject)({
-  mode: (0, _validatorPrimitives.tEnum)(['doNotSave', 'compressTrace', 'compressTraceAndSources'])
+  mode: (0, _validatorPrimitives.tEnum)(['archive', 'discard', 'entries'])
 });
 _validatorPrimitives.scheme.TracingTracingStopChunkResult = (0, _validatorPrimitives.tObject)({
   artifact: (0, _validatorPrimitives.tOptional)((0, _validatorPrimitives.tChannel)(['Artifact'])),
-  sourceEntries: (0, _validatorPrimitives.tOptional)((0, _validatorPrimitives.tArray)((0, _validatorPrimitives.tType)('NameValue')))
+  entries: (0, _validatorPrimitives.tOptional)((0, _validatorPrimitives.tArray)((0, _validatorPrimitives.tType)('NameValue')))
 });
 _validatorPrimitives.scheme.TracingTracingStopParams = (0, _validatorPrimitives.tOptional)((0, _validatorPrimitives.tObject)({}));
 _validatorPrimitives.scheme.TracingTracingStopResult = (0, _validatorPrimitives.tOptional)((0, _validatorPrimitives.tObject)({}));
@@ -2179,7 +2245,8 @@ _validatorPrimitives.scheme.ElectronLaunchParams = (0, _validatorPrimitives.tObj
   })),
   httpCredentials: (0, _validatorPrimitives.tOptional)((0, _validatorPrimitives.tObject)({
     username: _validatorPrimitives.tString,
-    password: _validatorPrimitives.tString
+    password: _validatorPrimitives.tString,
+    origin: (0, _validatorPrimitives.tOptional)(_validatorPrimitives.tString)
   })),
   ignoreHTTPSErrors: (0, _validatorPrimitives.tOptional)(_validatorPrimitives.tBoolean),
   locale: (0, _validatorPrimitives.tOptional)(_validatorPrimitives.tString),
@@ -2387,7 +2454,8 @@ _validatorPrimitives.scheme.AndroidDeviceLaunchBrowserParams = (0, _validatorPri
   offline: (0, _validatorPrimitives.tOptional)(_validatorPrimitives.tBoolean),
   httpCredentials: (0, _validatorPrimitives.tOptional)((0, _validatorPrimitives.tObject)({
     username: _validatorPrimitives.tString,
-    password: _validatorPrimitives.tString
+    password: _validatorPrimitives.tString,
+    origin: (0, _validatorPrimitives.tOptional)(_validatorPrimitives.tString)
   })),
   deviceScaleFactor: (0, _validatorPrimitives.tOptional)(_validatorPrimitives.tNumber),
   isMobile: (0, _validatorPrimitives.tOptional)(_validatorPrimitives.tBoolean),
@@ -2408,6 +2476,7 @@ _validatorPrimitives.scheme.AndroidDeviceLaunchBrowserParams = (0, _validatorPri
   strictSelectors: (0, _validatorPrimitives.tOptional)(_validatorPrimitives.tBoolean),
   serviceWorkers: (0, _validatorPrimitives.tOptional)((0, _validatorPrimitives.tEnum)(['allow', 'block'])),
   pkg: (0, _validatorPrimitives.tOptional)(_validatorPrimitives.tString),
+  args: (0, _validatorPrimitives.tOptional)((0, _validatorPrimitives.tArray)(_validatorPrimitives.tString)),
   proxy: (0, _validatorPrimitives.tOptional)((0, _validatorPrimitives.tObject)({
     server: _validatorPrimitives.tString,
     bypass: (0, _validatorPrimitives.tOptional)(_validatorPrimitives.tString),

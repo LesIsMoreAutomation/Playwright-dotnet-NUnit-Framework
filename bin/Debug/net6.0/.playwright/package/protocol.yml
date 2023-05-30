@@ -16,8 +16,8 @@ StackFrame:
   type: object
   properties:
     file: string
-    line: number?
-    column: number?
+    line: number
+    column: number
     function: string?
 
 # This object can be send with any rpc call in the "metadata" field.
@@ -25,12 +25,24 @@ StackFrame:
 Metadata:
   type: object
   properties:
+    location:
+      type: object?
+      properties:
+        file: string
+        line: number?
+        column: number?
+    apiName: string?
+    internal: boolean?
+    # The number of milliseconds elapsed since midnight, January 1, 1970 UTC.
+    wallTime: number?
+
+ClientSideCallMetadata:
+  type: object
+  properties:
+    id: number
     stack:
       type: array?
       items: StackFrame
-    apiName: string?
-    internal: boolean?
-
 
 Point:
   type: object
@@ -436,6 +448,7 @@ ContextOptions:
       properties:
         username: string
         password: string
+        origin: string?
     deviceScaleFactor: number?
     isMobile: boolean?
     hasTouch: boolean?
@@ -488,6 +501,13 @@ LocalUtils:
         entries:
           type: array
           items: NameValue
+        stacksId: string?
+        mode:
+          type: enum
+          literals:
+            - write
+            - append
+        includeSources: boolean
 
     harOpen:
       parameters:
@@ -535,11 +555,30 @@ LocalUtils:
       parameters:
         wsEndpoint: string
         headers: json?
+        exposeNetwork: string?
         slowMo: number?
         timeout: number?
         socksProxyRedirectPortForTest: number?
       returns:
         pipe: JsonPipe
+        headers:
+          type: array
+          items: NameValue
+
+    tracingStarted:
+      parameters:
+        tracesDir: string?
+        traceName: string
+      returns:
+        stacksId: string
+
+    addStackToTracingNoReply:
+      parameters:
+        callData: ClientSideCallMetadata
+
+    traceDiscarded:
+      parameters:
+        stacksId: string
 
 Root:
   type: interface
@@ -619,6 +658,7 @@ Playwright:
           properties:
             username: string
             password: string
+            origin: string?
         proxy:
           type: object?
           properties:
@@ -857,6 +897,10 @@ Browser:
 
     killForTests:
 
+    defaultUserAgentForTest:
+      returns:
+        userAgent: string
+
     newContext:
       parameters:
         $mixin: ContextOptions
@@ -943,7 +987,7 @@ EventTarget:
             event: string?
             message: string?
             error: string?
-      tracing:
+      flags:
         snapshot: true
 
 BrowserContext:
@@ -1030,10 +1074,18 @@ BrowserContext:
           properties:
             username: string
             password: string
+            origin: string?
 
-    setNetworkInterceptionEnabled:
+    setNetworkInterceptionPatterns:
       parameters:
-        enabled: boolean
+        patterns:
+          type: array
+          items:
+            type: object
+            properties:
+              glob: string?
+              regexSource: string?
+              regexFlags: string?
 
     setOffline:
       parameters:
@@ -1061,6 +1113,7 @@ BrowserContext:
           - inspecting
           - recording
         pauseOnNextStatement: boolean?
+        testIdAttributeName: string?
         launchOptions: json?
         contextOptions: json?
         device: string?
@@ -1100,6 +1153,8 @@ BrowserContext:
         event:
           type: enum
           literals:
+          - console
+          - dialog
           - request
           - response
           - requestFinished
@@ -1112,7 +1167,15 @@ BrowserContext:
       parameters:
         binding: BindingCall
 
+    console:
+      parameters:
+        message: ConsoleMessage
+
     close:
+
+    dialog:
+      parameters:
+        dialog: Dialog
 
     page:
       parameters:
@@ -1218,6 +1281,8 @@ Page:
           - active
           - none
           - no-override
+      flags:
+        snapshot: true
 
     exposeBinding:
       parameters:
@@ -1230,7 +1295,8 @@ Page:
         waitUntil: LifecycleEvent?
       returns:
         response: Response?
-      tracing:
+      flags:
+        slowMo: true
         snapshot: true
 
     goForward:
@@ -1239,7 +1305,8 @@ Page:
         waitUntil: LifecycleEvent?
       returns:
         response: Response?
-      tracing:
+      flags:
+        slowMo: true
         snapshot: true
 
     reload:
@@ -1248,7 +1315,8 @@ Page:
         waitUntil: LifecycleEvent?
       returns:
         response: Response?
-      tracing:
+      flags:
+        slowMo: true
         snapshot: true
 
     expectScreenshot:
@@ -1264,6 +1332,7 @@ Page:
         comparatorOptions:
           type: object?
           properties:
+            comparator: string?
             maxDiffPixels: number?
             maxDiffPixelRatio: number?
             threshold: number?
@@ -1281,7 +1350,7 @@ Page:
         log:
           type: array?
           items: string
-      tracing:
+      flags:
         snapshot: true
 
     screenshot:
@@ -1298,7 +1367,7 @@ Page:
         $mixin: CommonScreenshotOptions
       returns:
         binary: binary
-      tracing:
+      flags:
         snapshot: true
 
     setExtraHTTPHeaders:
@@ -1307,9 +1376,16 @@ Page:
           type: array
           items: NameValue
 
-    setNetworkInterceptionEnabled:
+    setNetworkInterceptionPatterns:
       parameters:
-        enabled: boolean
+        patterns:
+          type: array
+          items:
+            type: object
+            properties:
+              glob: string?
+              regexSource: string?
+              regexFlags: string?
 
     setViewportSize:
       parameters:
@@ -1318,39 +1394,44 @@ Page:
           properties:
             width: number
             height: number
-      tracing:
+      flags:
         snapshot: true
 
     keyboardDown:
       parameters:
         key: string
-      tracing:
+      flags:
+        slowMo: true
         snapshot: true
 
     keyboardUp:
       parameters:
         key: string
-      tracing:
+      flags:
+        slowMo: true
         snapshot: true
 
     keyboardInsertText:
       parameters:
         text: string
-      tracing:
+      flags:
+        slowMo: true
         snapshot: true
 
     keyboardType:
       parameters:
         text: string
         delay: number?
-      tracing:
+      flags:
+        slowMo: true
         snapshot: true
 
     keyboardPress:
       parameters:
         key: string
         delay: number?
-      tracing:
+      flags:
+        slowMo: true
         snapshot: true
 
     mouseMove:
@@ -1358,7 +1439,8 @@ Page:
         x: number
         y: number
         steps: number?
-      tracing:
+      flags:
+        slowMo: true
         snapshot: true
 
     mouseDown:
@@ -1370,7 +1452,8 @@ Page:
           - right
           - middle
         clickCount: number?
-      tracing:
+      flags:
+        slowMo: true
         snapshot: true
 
     mouseUp:
@@ -1382,7 +1465,8 @@ Page:
           - right
           - middle
         clickCount: number?
-      tracing:
+      flags:
+        slowMo: true
         snapshot: true
 
     mouseClick:
@@ -1397,21 +1481,24 @@ Page:
           - right
           - middle
         clickCount: number?
-      tracing:
+      flags:
+        slowMo: true
         snapshot: true
 
     mouseWheel:
       parameters:
         deltaX: number
         deltaY: number
-      tracing:
+      flags:
+        slowMo: true
         snapshot: true
 
     touchscreenTap:
       parameters:
         x: number
         y: number
-      tracing:
+      flags:
+        slowMo: true
         snapshot: true
 
     accessibilitySnapshot:
@@ -1503,6 +1590,8 @@ Page:
         event:
           type: enum
           literals:
+          - console
+          - dialog
           - fileChooser
           - request
           - response
@@ -1518,15 +1607,7 @@ Page:
 
     close:
 
-    console:
-      parameters:
-        message: ConsoleMessage
-
     crash:
-
-    dialog:
-      parameters:
-        dialog: Dialog
 
     download:
       parameters:
@@ -1591,7 +1672,7 @@ Frame:
         arg: SerializedArgument
       returns:
         value: SerializedValue
-      tracing:
+      flags:
         snapshot: true
 
     evalOnSelectorAll:
@@ -1602,7 +1683,7 @@ Frame:
         arg: SerializedArgument
       returns:
         value: SerializedValue
-      tracing:
+      flags:
         snapshot: true
 
     addScriptTag:
@@ -1612,7 +1693,7 @@ Frame:
         type: string?
       returns:
         element: ElementHandle
-      tracing:
+      flags:
         snapshot: true
 
     addStyleTag:
@@ -1621,7 +1702,7 @@ Frame:
         content: string?
       returns:
         element: ElementHandle
-      tracing:
+      flags:
         snapshot: true
 
     blur:
@@ -1629,7 +1710,8 @@ Frame:
         selector: string
         strict: boolean?
         timeout: number?
-      tracing:
+      flags:
+        slowMo: true
         snapshot: true
 
     check:
@@ -1641,7 +1723,8 @@ Frame:
         position: Point?
         timeout: number?
         trial: boolean?
-      tracing:
+      flags:
+        slowMo: true
         snapshot: true
         pausesBeforeInput: true
 
@@ -1671,7 +1754,8 @@ Frame:
         clickCount: number?
         timeout: number?
         trial: boolean?
-      tracing:
+      flags:
+        slowMo: true
         snapshot: true
         pausesBeforeInput: true
 
@@ -1690,7 +1774,8 @@ Frame:
         sourcePosition: Point?
         targetPosition: Point?
         strict: boolean?
-      tracing:
+      flags:
+        slowMo: true
         snapshot: true
         pausesBeforeInput: true
 
@@ -1719,7 +1804,8 @@ Frame:
           - middle
         timeout: number?
         trial: boolean?
-      tracing:
+      flags:
+        slowMo: true
         snapshot: true
         pausesBeforeInput: true
 
@@ -1730,17 +1816,19 @@ Frame:
         type: string
         eventInit: SerializedArgument
         timeout: number?
-      tracing:
+      flags:
+        slowMo: true
         snapshot: true
 
     evaluateExpression:
       parameters:
         expression: string
         isFunction: boolean?
+        exposeUtilityScript: boolean?
         arg: SerializedArgument
       returns:
         value: SerializedValue
-      tracing:
+      flags:
         snapshot: true
 
     evaluateExpressionHandle:
@@ -1750,7 +1838,7 @@ Frame:
         arg: SerializedArgument
       returns:
         handle: JSHandle
-      tracing:
+      flags:
         snapshot: true
 
     fill:
@@ -1761,7 +1849,8 @@ Frame:
         force: boolean?
         timeout: number?
         noWaitAfter: boolean?
-      tracing:
+      flags:
+        slowMo: true
         snapshot: true
         pausesBeforeInput: true
 
@@ -1770,7 +1859,8 @@ Frame:
         selector: string
         strict: boolean?
         timeout: number?
-      tracing:
+      flags:
+        slowMo: true
         snapshot: true
 
     frameElement:
@@ -1789,7 +1879,7 @@ Frame:
         timeout: number?
       returns:
         value: string?
-      tracing:
+      flags:
         snapshot: true
 
     goto:
@@ -1800,7 +1890,8 @@ Frame:
         referer: string?
       returns:
         response: Response?
-      tracing:
+      flags:
+        slowMo: true
         snapshot: true
 
     hover:
@@ -1821,7 +1912,8 @@ Frame:
         timeout: number?
         trial: boolean?
         noWaitAfter: boolean?
-      tracing:
+      flags:
+        slowMo: true
         snapshot: true
         pausesBeforeInput: true
 
@@ -1832,7 +1924,7 @@ Frame:
         timeout: number?
       returns:
         value: string
-      tracing:
+      flags:
         snapshot: true
 
     innerText:
@@ -1842,7 +1934,7 @@ Frame:
         timeout: number?
       returns:
         value: string
-      tracing:
+      flags:
         snapshot: true
 
     inputValue:
@@ -1852,7 +1944,7 @@ Frame:
         timeout: number?
       returns:
         value: string
-      tracing:
+      flags:
         snapshot: true
 
     isChecked:
@@ -1862,7 +1954,7 @@ Frame:
         timeout: number?
       returns:
         value: boolean
-      tracing:
+      flags:
         snapshot: true
 
     isDisabled:
@@ -1872,7 +1964,7 @@ Frame:
         timeout: number?
       returns:
         value: boolean
-      tracing:
+      flags:
         snapshot: true
 
     isEnabled:
@@ -1882,7 +1974,7 @@ Frame:
         timeout: number?
       returns:
         value: boolean
-      tracing:
+      flags:
         snapshot: true
 
     isHidden:
@@ -1891,7 +1983,7 @@ Frame:
         strict: boolean?
       returns:
         value: boolean
-      tracing:
+      flags:
         snapshot: true
 
     isVisible:
@@ -1900,7 +1992,7 @@ Frame:
         strict: boolean?
       returns:
         value: boolean
-      tracing:
+      flags:
         snapshot: true
 
     isEditable:
@@ -1910,7 +2002,7 @@ Frame:
         timeout: number?
       returns:
         value: boolean
-      tracing:
+      flags:
         snapshot: true
 
     press:
@@ -1921,7 +2013,8 @@ Frame:
         delay: number?
         noWaitAfter: boolean?
         timeout: number?
-      tracing:
+      flags:
+        slowMo: true
         snapshot: true
         pausesBeforeInput: true
 
@@ -1958,6 +2051,7 @@ Frame:
           items:
             type: object
             properties:
+              valueOrLabel: string?
               value: string?
               label: string?
               index: number?
@@ -1968,7 +2062,8 @@ Frame:
         values:
           type: array
           items: string
-      tracing:
+      flags:
+        slowMo: true
         snapshot: true
         pausesBeforeInput: true
 
@@ -1977,7 +2072,7 @@ Frame:
         html: string
         timeout: number?
         waitUntil: LifecycleEvent?
-      tracing:
+      flags:
         snapshot: true
 
     setInputFiles:
@@ -1994,7 +2089,8 @@ Frame:
               buffer: binary
         timeout: number?
         noWaitAfter: boolean?
-      tracing:
+      flags:
+        slowMo: true
         snapshot: true
         pausesBeforeInput: true
 
@@ -2012,7 +2108,8 @@ Frame:
           items: WritableStream
         timeout: number?
         noWaitAfter: boolean?
-      tracing:
+      flags:
+        slowMo: true
         snapshot: true
         pausesBeforeInput: true
 
@@ -2034,7 +2131,8 @@ Frame:
         position: Point?
         timeout: number?
         trial: boolean?
-      tracing:
+      flags:
+        slowMo: true
         snapshot: true
         pausesBeforeInput: true
 
@@ -2045,7 +2143,7 @@ Frame:
         timeout: number?
       returns:
         value: string?
-      tracing:
+      flags:
         snapshot: true
 
     title:
@@ -2060,7 +2158,8 @@ Frame:
         delay: number?
         noWaitAfter: boolean?
         timeout: number?
-      tracing:
+      flags:
+        slowMo: true
         snapshot: true
         pausesBeforeInput: true
 
@@ -2073,14 +2172,15 @@ Frame:
         position: Point?
         timeout: number?
         trial: boolean?
-      tracing:
+      flags:
+        slowMo: true
         snapshot: true
         pausesBeforeInput: true
 
     waitForTimeout:
       parameters:
         timeout: number
-      tracing:
+      flags:
         snapshot: true
 
     waitForFunction:
@@ -2093,7 +2193,7 @@ Frame:
         pollingInterval: number?
       returns:
         handle: JSHandle
-      tracing:
+      flags:
         snapshot: true
 
     waitForSelector:
@@ -2111,7 +2211,7 @@ Frame:
         omitReturnValue: boolean?
       returns:
         element: ElementHandle?
-      tracing:
+      flags:
         snapshot: true
 
     expect:
@@ -2130,10 +2230,11 @@ Frame:
       returns:
         matches: boolean
         received: SerializedValue?
+        timedOut: boolean?
         log:
           type: array?
           items: string
-      tracing:
+      flags:
         snapshot: true
 
   events:
@@ -2201,7 +2302,7 @@ JSHandle:
         arg: SerializedArgument
       returns:
         value: SerializedValue
-      tracing:
+      flags:
         snapshot: true
 
     evaluateExpressionHandle:
@@ -2211,7 +2312,7 @@ JSHandle:
         arg: SerializedArgument
       returns:
         handle: JSHandle
-      tracing:
+      flags:
         snapshot: true
 
     getPropertyList:
@@ -2233,6 +2334,10 @@ JSHandle:
     jsonValue:
       returns:
         value: SerializedValue
+
+    objectCount:
+      returns:
+        count: number
 
   events:
 
@@ -2258,7 +2363,7 @@ ElementHandle:
         arg: SerializedArgument
       returns:
         value: SerializedValue
-      tracing:
+      flags:
         snapshot: true
 
     evalOnSelectorAll:
@@ -2269,7 +2374,7 @@ ElementHandle:
         arg: SerializedArgument
       returns:
         value: SerializedValue
-      tracing:
+      flags:
         snapshot: true
 
     boundingBox:
@@ -2283,7 +2388,8 @@ ElementHandle:
         position: Point?
         timeout: number?
         trial: boolean?
-      tracing:
+      flags:
+        slowMo: true
         snapshot: true
         pausesBeforeInput: true
 
@@ -2311,7 +2417,8 @@ ElementHandle:
         clickCount: number?
         timeout: number?
         trial: boolean?
-      tracing:
+      flags:
+        slowMo: true
         snapshot: true
         pausesBeforeInput: true
 
@@ -2342,7 +2449,8 @@ ElementHandle:
           - middle
         timeout: number?
         trial: boolean?
-      tracing:
+      flags:
+        slowMo: true
         snapshot: true
         pausesBeforeInput: true
 
@@ -2350,7 +2458,8 @@ ElementHandle:
       parameters:
         type: string
         eventInit: SerializedArgument
-      tracing:
+      flags:
+        slowMo: true
         snapshot: true
 
     fill:
@@ -2359,11 +2468,15 @@ ElementHandle:
         force: boolean?
         timeout: number?
         noWaitAfter: boolean?
-      tracing:
+      flags:
+        slowMo: true
         snapshot: true
         pausesBeforeInput: true
 
     focus:
+      flags:
+        slowMo: true
+        snapshot: true
 
     getAttribute:
       parameters:
@@ -2387,62 +2500,63 @@ ElementHandle:
         timeout: number?
         trial: boolean?
         noWaitAfter: boolean?
-      tracing:
+      flags:
+        slowMo: true
         snapshot: true
         pausesBeforeInput: true
 
     innerHTML:
       returns:
         value: string
-      tracing:
+      flags:
         snapshot: true
 
     innerText:
       returns:
         value: string
-      tracing:
+      flags:
         snapshot: true
 
     inputValue:
       returns:
         value: string
-      tracing:
+      flags:
         snapshot: true
 
     isChecked:
       returns:
         value: boolean
-      tracing:
+      flags:
         snapshot: true
 
     isDisabled:
       returns:
         value: boolean
-      tracing:
+      flags:
         snapshot: true
 
     isEditable:
       returns:
         value: boolean
-      tracing:
+      flags:
         snapshot: true
 
     isEnabled:
       returns:
         value: boolean
-      tracing:
+      flags:
         snapshot: true
 
     isHidden:
       returns:
         value: boolean
-      tracing:
+      flags:
         snapshot: true
 
     isVisible:
       returns:
         value: boolean
-      tracing:
+      flags:
         snapshot: true
 
     ownerFrame:
@@ -2455,7 +2569,8 @@ ElementHandle:
         delay: number?
         timeout: number?
         noWaitAfter: boolean?
-      tracing:
+      flags:
+        slowMo: true
         snapshot: true
         pausesBeforeInput: true
 
@@ -2486,13 +2601,14 @@ ElementHandle:
         $mixin: CommonScreenshotOptions
       returns:
         binary: binary
-      tracing:
+      flags:
         snapshot: true
 
     scrollIntoViewIfNeeded:
       parameters:
         timeout: number?
-      tracing:
+      flags:
+        slowMo: true
         snapshot: true
 
     selectOption:
@@ -2505,6 +2621,7 @@ ElementHandle:
           items:
             type: object
             properties:
+              valueOrLabel: string?
               value: string?
               label: string?
               index: number?
@@ -2515,7 +2632,8 @@ ElementHandle:
         values:
           type: array
           items: string
-      tracing:
+      flags:
+        slowMo: true
         snapshot: true
         pausesBeforeInput: true
 
@@ -2523,7 +2641,8 @@ ElementHandle:
       parameters:
         force: boolean?
         timeout: number?
-      tracing:
+      flags:
+        slowMo: true
         snapshot: true
 
     setInputFiles:
@@ -2538,7 +2657,8 @@ ElementHandle:
               buffer: binary
         timeout: number?
         noWaitAfter: boolean?
-      tracing:
+      flags:
+        slowMo: true
         snapshot: true
         pausesBeforeInput: true
 
@@ -2554,7 +2674,8 @@ ElementHandle:
           items: WritableStream
         timeout: number?
         noWaitAfter: boolean?
-      tracing:
+      flags:
+        slowMo: true
         snapshot: true
         pausesBeforeInput: true
 
@@ -2574,14 +2695,15 @@ ElementHandle:
         position: Point?
         timeout: number?
         trial: boolean?
-      tracing:
+      flags:
+        slowMo: true
         snapshot: true
         pausesBeforeInput: true
 
     textContent:
       returns:
         value: string?
-      tracing:
+      flags:
         snapshot: true
 
     type:
@@ -2590,7 +2712,8 @@ ElementHandle:
         delay: number?
         noWaitAfter: boolean?
         timeout: number?
-      tracing:
+      flags:
+        slowMo: true
         snapshot: true
         pausesBeforeInput: true
 
@@ -2601,7 +2724,8 @@ ElementHandle:
         position: Point?
         timeout: number?
         trial: boolean?
-      tracing:
+      flags:
+        slowMo: true
         snapshot: true
         pausesBeforeInput: true
 
@@ -2617,7 +2741,7 @@ ElementHandle:
           - disabled
           - editable
         timeout: number?
-      tracing:
+      flags:
         snapshot: true
 
     waitForSelector:
@@ -2634,7 +2758,7 @@ ElementHandle:
           - hidden
       returns:
         element: ElementHandle?
-      tracing:
+      flags:
         snapshot: true
 
 
@@ -2682,6 +2806,7 @@ Route:
     abort:
       parameters:
         errorCode: string?
+        requestUrl: string
 
     continue:
       parameters:
@@ -2691,6 +2816,7 @@ Route:
           type: array?
           items: NameValue
         postData: binary?
+        requestUrl: string
 
     fulfill:
       parameters:
@@ -2702,6 +2828,7 @@ Route:
         body: string?
         isBase64: boolean?
         fetchResponseUid: string?
+        requestUrl: string
 
 ResourceTiming:
   type: object
@@ -2812,6 +2939,7 @@ ConsoleMessage:
   type: interface
 
   initializer:
+    page: Page
     type: string
     text: string
     args:
@@ -2853,6 +2981,7 @@ Dialog:
   type: interface
 
   initializer:
+    page: Page?
     type: string
     message: string
     defaultValue: string
@@ -2880,20 +3009,25 @@ Tracing:
 
     tracingStartChunk:
       parameters:
+        name: string?
         title: string?
+      returns:
+        traceName: string
 
     tracingStopChunk:
       parameters:
         mode:
           type: enum
           literals:
-          - doNotSave
-          - compressTrace
-          - compressTraceAndSources
+          - archive
+          - discard
+          - entries
       returns:
-        # The artifact may be missing if the browser closes while tracing is beeing stopped.
+        # The artifact may be missing if the browser closes while tracing is being stopped.
+        # Or it can be missing if client-side compression is taking place.
         artifact: Artifact?
-        sourceEntries:
+        # For local mode, these are all entries.
+        entries:
           type: array?
           items: NameValue
 
@@ -3022,6 +3156,7 @@ Electron:
           properties:
             username: string
             password: string
+            origin: string?
         ignoreHTTPSErrors: boolean?
         locale: string?
         offline: boolean?
@@ -3252,6 +3387,9 @@ AndroidDevice:
       parameters:
         $mixin: ContextOptions
         pkg: string?
+        args:
+          type: array?
+          items: string
         proxy:
           type: object?
           properties:

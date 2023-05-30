@@ -230,7 +230,7 @@ class Screenshotter {
       frame,
       selector
     }) => {
-      const pair = await frame.resolveFrameForSelectorNoWait(selector);
+      const pair = await frame.selectors.resolveFrameForSelector(selector);
       if (pair) framesToParsedSelectors.set(pair.frame, pair.info.parsed);
     }));
     progress.throwIfAborted(); // Avoid extra work.
@@ -242,6 +242,7 @@ class Screenshotter {
     return cleanup;
   }
   async _screenshot(progress, format, documentRect, viewportRect, fitsViewport, options) {
+    var _options$quality;
     if (options.__testHookBeforeScreenshot) await options.__testHookBeforeScreenshot();
     progress.throwIfAborted(); // Screenshotting is expensive - avoid extra work.
     const shouldSetDefaultBackground = options.omitBackground && format === 'png';
@@ -259,7 +260,8 @@ class Screenshotter {
     const cleanupHighlight = await this._maskElements(progress, options);
     progress.throwIfAborted(); // Avoid extra work.
 
-    const buffer = await this._page._delegate.takeScreenshot(progress, format, documentRect, viewportRect, options.quality, fitsViewport, options.scale || 'device');
+    const quality = format === 'jpeg' ? (_options$quality = options.quality) !== null && _options$quality !== void 0 ? _options$quality : 80 : undefined;
+    const buffer = await this._page._delegate.takeScreenshot(progress, format, documentRect, viewportRect, quality, fitsViewport, options.scale || 'device');
     progress.throwIfAborted(); // Avoid restoring after failure - should be done by cleanup.
 
     await cleanupHighlight();

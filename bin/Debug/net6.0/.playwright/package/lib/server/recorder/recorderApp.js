@@ -57,12 +57,13 @@ class RecorderApp extends _events.EventEmitter {
   async _init() {
     await (0, _crApp.installAppIcon)(this._page);
     await (0, _crApp.syncLocalStorageWithSettings)(this._page, 'recorder');
-    await this._page._setServerRequestInterceptor(async route => {
-      if (route.request().url().startsWith('https://playwright/')) {
-        const uri = route.request().url().substring('https://playwright/'.length);
-        const file = require.resolve('../../webpack/recorder/' + uri);
-        const buffer = await _fs.default.promises.readFile(file);
-        await route.fulfill({
+    await this._page._setServerRequestInterceptor(route => {
+      if (!route.request().url().startsWith('https://playwright/')) return false;
+      const uri = route.request().url().substring('https://playwright/'.length);
+      const file = require.resolve('../../webpack/recorder/' + uri);
+      _fs.default.promises.readFile(file).then(buffer => {
+        route.fulfill({
+          requestUrl: route.request().url(),
           status: 200,
           headers: [{
             name: 'Content-Type',
@@ -71,9 +72,8 @@ class RecorderApp extends _events.EventEmitter {
           body: buffer.toString('base64'),
           isBase64: true
         });
-        return;
-      }
-      await route.continue();
+      });
+      return true;
     });
     await this._page.exposeBinding('dispatch', false, (_, data) => this.emit('event', data));
     this._page.once('close', () => {
@@ -93,8 +93,8 @@ class RecorderApp extends _events.EventEmitter {
       channel: (0, _registry.findChromiumChannel)(sdkLanguage),
       args,
       noDefaultViewport: true,
-      colorScheme: 'no-override',
       ignoreDefaultArgs: ['--enable-automation'],
+      colorScheme: 'no-override',
       headless: !!process.env.PWTEST_CLI_HEADLESS || (0, _utils.isUnderTest)() && !headed,
       useWebSocket: !!process.env.PWTEST_RECORDER_PORT,
       handleSIGINT
@@ -129,13 +129,7 @@ class RecorderApp extends _events.EventEmitter {
     }).toString(), true, sources, 'main').catch(() => {});
 
     // Testing harness for runCLI mode.
-    {
-      if ((process.env.PWTEST_CLI_IS_UNDER_TEST || process.env.PWTEST_CLI_EXIT) && sources.length) {
-        process.stdout.write('\n-------------8<-------------\n');
-        process.stdout.write(sources[0].text);
-        process.stdout.write('\n-------------8<-------------\n');
-      }
-    }
+    if (process.env.PWTEST_CLI_IS_UNDER_TEST && sources.length) process._didSetSourcesForTest(sources[0].text);
   }
   async setSelector(selector, focus) {
     if (focus) {

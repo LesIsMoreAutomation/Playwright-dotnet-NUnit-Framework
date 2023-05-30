@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "C:\\Users\\lesibana.moselakgomo\\OneDrive - Investec\\Desktop\\Playwright-dotnet-NUnit-Framework\\Playwright-dotnet-NUnit-Framework\\SpecFlowWithPlaywright.csproj": {}
+    "C:\\Users\\lesibana.moselakgomo\\OneDrive - Investec\\Desktop\\Playwright-dotnet-NUnit-Framework\\SpecFlowWithPlaywright.csproj": {}
   },
   "projects": {
-    "C:\\Users\\lesibana.moselakgomo\\OneDrive - Investec\\Desktop\\Playwright-dotnet-NUnit-Framework\\Playwright-dotnet-NUnit-Framework\\SpecFlowWithPlaywright.csproj": {
+    "C:\\Users\\lesibana.moselakgomo\\OneDrive - Investec\\Desktop\\Playwright-dotnet-NUnit-Framework\\SpecFlowWithPlaywright.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\lesibana.moselakgomo\\OneDrive - Investec\\Desktop\\Playwright-dotnet-NUnit-Framework\\Playwright-dotnet-NUnit-Framework\\SpecFlowWithPlaywright.csproj",
+        "projectUniqueName": "C:\\Users\\lesibana.moselakgomo\\OneDrive - Investec\\Desktop\\Playwright-dotnet-NUnit-Framework\\SpecFlowWithPlaywright.csproj",
         "projectName": "SpecFlowWithPlaywright",
-        "projectPath": "C:\\Users\\lesibana.moselakgomo\\OneDrive - Investec\\Desktop\\Playwright-dotnet-NUnit-Framework\\Playwright-dotnet-NUnit-Framework\\SpecFlowWithPlaywright.csproj",
+        "projectPath": "C:\\Users\\lesibana.moselakgomo\\OneDrive - Investec\\Desktop\\Playwright-dotnet-NUnit-Framework\\SpecFlowWithPlaywright.csproj",
         "packagesPath": "C:\\Users\\lesibana.moselakgomo\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\lesibana.moselakgomo\\OneDrive - Investec\\Desktop\\Playwright-dotnet-NUnit-Framework\\Playwright-dotnet-NUnit-Framework\\obj\\",
+        "outputPath": "C:\\Users\\lesibana.moselakgomo\\OneDrive - Investec\\Desktop\\Playwright-dotnet-NUnit-Framework\\obj\\",
         "projectStyle": "PackageReference",
         "configFilePaths": [
           "C:\\Users\\lesibana.moselakgomo\\AppData\\Roaming\\NuGet\\NuGet.Config",
@@ -42,23 +42,23 @@
           "dependencies": {
             "FluentAssertions": {
               "target": "Package",
-              "version": "[6.9.0, )"
+              "version": "[6.11.0, )"
             },
             "Microsoft.NET.Test.Sdk": {
               "target": "Package",
-              "version": "[17.0.0, )"
+              "version": "[17.6.0, )"
             },
             "Microsoft.Playwright": {
               "target": "Package",
-              "version": "[1.28.0, )"
+              "version": "[1.34.0, )"
             },
             "NUnit3TestAdapter": {
               "target": "Package",
-              "version": "[4.3.1, )"
+              "version": "[4.4.2, )"
             },
             "PuppeteerSharp": {
               "target": "Package",
-              "version": "[8.0.0, )"
+              "version": "[10.0.0, )"
             },
             "SpecFlow.ExternalData": {
               "target": "Package",
