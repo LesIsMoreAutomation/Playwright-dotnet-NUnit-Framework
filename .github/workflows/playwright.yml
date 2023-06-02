@@ -1,0 +1,41 @@
+name: SpecFlow Playwright Tests
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v2
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v2
+      with:
+        node-version: '14'
+
+    - name: Install Playwright
+      run: npm install -g playwright
+
+    - name: Restore dependencies
+      run: dotnet restore
+
+    - name: Build project
+      run: dotnet build --configuration Release
+
+    - name: Run tests
+      run: npx playwright test --browser chromium --workers 2
+
+    - name: Publish test results
+      uses: actions/upload-artifact@v2
+      with:
+        name: Test Results
+        path: TestResults/*.xml
