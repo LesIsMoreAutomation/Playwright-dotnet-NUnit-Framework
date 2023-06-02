@@ -29,8 +29,8 @@ jobs:
       - name: Run tests
         run: dotnet test
 
-      - name: Install SpecFlow+LivingDoc NuGet package
-        run: dotnet add package SpecFlow.Plus.LivingDocPlugin --version 3.9.57
+      - name: Install SpecFlow+LivingDoc global tool
+        run: dotnet tool install --global SpecFlow.Plus.LivingDocPlugin --version 3.9.57
 
       - name: Generate SpecFlow+LivingDoc report
         run: dotnet livingdoc feature --input=TestExecution.json --output=./LivingDoc/index.html
