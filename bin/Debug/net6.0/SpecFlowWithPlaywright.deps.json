@@ -13,13 +13,30 @@
           "Microsoft.Playwright": "1.34.0",
           "NUnit3TestAdapter": "4.4.2",
           "PuppeteerSharp": "10.0.0",
+          "SpecFlow": "3.9.74",
+          "SpecFlow.Allure": "3.5.0.73",
           "SpecFlow.ExternalData": "3.9.74",
+          "SpecFlow.Internal.Json": "1.0.8",
           "SpecFlow.NUnit": "3.9.74",
+          "SpecFlow.NUnit.Runners": "3.9.74",
           "SpecFlow.Plus.LivingDocPlugin": "3.9.57",
+          "SpecFlow.Tools.MsBuild.Generation": "3.9.74",
           "NUnit": "3.13.3"
         },
         "runtime": {
           "SpecFlowWithPlaywright.dll": {}
+        }
+      },
+      "Allure.Commons/3.5.0.73": {
+        "dependencies": {
+          "MimeTypesMap": "1.0.8",
+          "Newtonsoft.Json": "13.0.1"
+        },
+        "runtime": {
+          "lib/netstandard2.0/Allure.Commons.dll": {
+            "assemblyVersion": "3.5.0.73",
+            "fileVersion": "3.5.0.73"
+          }
         }
       },
       "BoDi/1.5.0": {
@@ -27,6 +44,14 @@
           "lib/netstandard2.0/BoDi.dll": {
             "assemblyVersion": "1.5.0.0",
             "fileVersion": "1.5.0.0"
+          }
+        }
+      },
+      "CsvHelper/27.1.0": {
+        "runtime": {
+          "lib/net5.0/CsvHelper.dll": {
+            "assemblyVersion": "27.0.0.0",
+            "fileVersion": "27.1.0.0"
           }
         }
       },
@@ -443,6 +468,14 @@
           }
         }
       },
+      "MimeTypesMap/1.0.8": {
+        "runtime": {
+          "lib/netstandard2.0/MimeTypesMap.dll": {
+            "assemblyVersion": "1.0.8.0",
+            "fileVersion": "1.0.8.0"
+          }
+        }
+      },
       "NETStandard.Library/2.0.0": {
         "dependencies": {
           "Microsoft.NETCore.Platforms": "2.0.0"
@@ -475,6 +508,22 @@
           }
         }
       },
+      "NUnit.Console/3.12.0": {
+        "dependencies": {
+          "NUnit.ConsoleRunner": "3.12.0",
+          "NUnit.Extension.NUnitProjectLoader": "3.6.0",
+          "NUnit.Extension.NUnitV2Driver": "3.8.0",
+          "NUnit.Extension.NUnitV2ResultWriter": "3.6.0",
+          "NUnit.Extension.TeamCityEventListener": "1.0.7",
+          "NUnit.Extension.VSProjectLoader": "3.8.0"
+        }
+      },
+      "NUnit.ConsoleRunner/3.12.0": {},
+      "NUnit.Extension.NUnitProjectLoader/3.6.0": {},
+      "NUnit.Extension.NUnitV2Driver/3.8.0": {},
+      "NUnit.Extension.NUnitV2ResultWriter/3.6.0": {},
+      "NUnit.Extension.TeamCityEventListener/1.0.7": {},
+      "NUnit.Extension.VSProjectLoader/3.8.0": {},
       "NUnit3TestAdapter/4.4.2": {},
       "PuppeteerSharp/10.0.0": {
         "dependencies": {
@@ -550,6 +599,20 @@
           }
         }
       },
+      "SpecFlow.Allure/3.5.0.73": {
+        "dependencies": {
+          "Allure.Commons": "3.5.0.73",
+          "CsvHelper": "27.1.0",
+          "SpecFlow": "3.9.74",
+          "System.Collections.Specialized": "4.3.0"
+        },
+        "runtime": {
+          "lib/netstandard2.0/Allure.SpecFlowPlugin.dll": {
+            "assemblyVersion": "3.5.0.73",
+            "fileVersion": "3.5.0.73"
+          }
+        }
+      },
       "SpecFlow.ExternalData/3.9.74": {
         "dependencies": {
           "SpecFlow": "3.9.74"
@@ -574,6 +637,13 @@
             "assemblyVersion": "3.9.0.0",
             "fileVersion": "3.9.74.14555"
           }
+        }
+      },
+      "SpecFlow.NUnit.Runners/3.9.74": {
+        "dependencies": {
+          "NUnit.Console": "3.12.0",
+          "NUnit3TestAdapter": "4.4.2",
+          "SpecFlow.NUnit": "3.9.74"
         }
       },
       "SpecFlow.Plus.LivingDocPlugin/3.9.57": {
@@ -623,6 +693,27 @@
           "System.Runtime.Extensions": "4.3.0",
           "System.Threading": "4.3.0",
           "System.Threading.Tasks": "4.3.0"
+        }
+      },
+      "System.Collections.NonGeneric/4.3.0": {
+        "dependencies": {
+          "System.Diagnostics.Debug": "4.3.0",
+          "System.Globalization": "4.3.0",
+          "System.Resources.ResourceManager": "4.3.0",
+          "System.Runtime": "4.3.0",
+          "System.Runtime.Extensions": "4.3.0",
+          "System.Threading": "4.3.0"
+        }
+      },
+      "System.Collections.Specialized/4.3.0": {
+        "dependencies": {
+          "System.Collections.NonGeneric": "4.3.0",
+          "System.Globalization": "4.3.0",
+          "System.Globalization.Extensions": "4.3.0",
+          "System.Resources.ResourceManager": "4.3.0",
+          "System.Runtime": "4.3.0",
+          "System.Runtime.Extensions": "4.3.0",
+          "System.Threading": "4.3.0"
         }
       },
       "System.ComponentModel.Annotations/5.0.0": {},
@@ -1150,12 +1241,26 @@
       "serviceable": false,
       "sha512": ""
     },
+    "Allure.Commons/3.5.0.73": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-cqMlst9Za1TfOsgN2fWzMkdUeOTy07AZHaudOuRVAjTyBmUxDKOKxCwlkxO1Xw91ogsPCdXIJdduUtFFGw+Thw==",
+      "path": "allure.commons/3.5.0.73",
+      "hashPath": "allure.commons.3.5.0.73.nupkg.sha512"
+    },
     "BoDi/1.5.0": {
       "type": "package",
       "serviceable": true,
       "sha512": "sha512-CzIPzdIAFSd2zuLxI+0K9s48Qv3HQDbWiApn9h96j284rHs2bSPrn/PMca3mi4q3xLSEqOp+GUJ6+mXDD9prKg==",
       "path": "bodi/1.5.0",
       "hashPath": "bodi.1.5.0.nupkg.sha512"
+    },
+    "CsvHelper/27.1.0": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-nrUpgvwEOq6xcdpvAMV0bnzVz1mHcPy9LjWXVbZq9pKs5nWdVFmUMoiEBsxY9+f1mR2Rdk0fOkK91OstYjTVxA==",
+      "path": "csvhelper/27.1.0",
+      "hashPath": "csvhelper.27.1.0.nupkg.sha512"
     },
     "FluentAssertions/6.11.0": {
       "type": "package",
@@ -1290,6 +1395,13 @@
       "path": "microsoft.testplatform.testhost/17.6.0",
       "hashPath": "microsoft.testplatform.testhost.17.6.0.nupkg.sha512"
     },
+    "MimeTypesMap/1.0.8": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-iOm6Zar+yVROhlyrGGSJTfThvNoHLUeYeQQND9YD/ot/nA2qsWUp9kP2MHTdF9P7I8afW6eCf8vdELLZjDFdSQ==",
+      "path": "mimetypesmap/1.0.8",
+      "hashPath": "mimetypesmap.1.0.8.nupkg.sha512"
+    },
     "NETStandard.Library/2.0.0": {
       "type": "package",
       "serviceable": true,
@@ -1317,6 +1429,55 @@
       "sha512": "sha512-KNPDpls6EfHwC3+nnA67fh5wpxeLb3VLFAfLxrug6JMYDLHH6InaQIWR7Sc3y75d/9IKzMksH/gi08W7XWbmnQ==",
       "path": "nunit/3.13.3",
       "hashPath": "nunit.3.13.3.nupkg.sha512"
+    },
+    "NUnit.Console/3.12.0": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-9KXFnViEIKQjz4vqiYFpLV9sntfHxixQomLCJzDMXC6WDo9DP2GhDQiBND6we6MRStMSNzoAWgourbLKwo7utQ==",
+      "path": "nunit.console/3.12.0",
+      "hashPath": "nunit.console.3.12.0.nupkg.sha512"
+    },
+    "NUnit.ConsoleRunner/3.12.0": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-ZUtI8leU9ozCjLy4ZZ2X6ClU0hxfQtb95VOdmMA4SxIUvf62rIPxoHXS+jghvo5QxgRihGGcEp8xT3vCfgDdsA==",
+      "path": "nunit.consolerunner/3.12.0",
+      "hashPath": "nunit.consolerunner.3.12.0.nupkg.sha512"
+    },
+    "NUnit.Extension.NUnitProjectLoader/3.6.0": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-ev2+dCJShMNIATkYNm/vHEuieBfbismr9DcUfBvafJZf5vNyugXPuMXO/MaOFcJaoW9j6/zjMmXKG7R5umWzXA==",
+      "path": "nunit.extension.nunitprojectloader/3.6.0",
+      "hashPath": "nunit.extension.nunitprojectloader.3.6.0.nupkg.sha512"
+    },
+    "NUnit.Extension.NUnitV2Driver/3.8.0": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-l6MgFJPTnrlDaMXWfbUZ82h1uvtj0C1ExPpqm6HrYOBa5Z4MBwmFLqj85rnv9JMhu/Ju7jQB/FIaMbfoXInI2A==",
+      "path": "nunit.extension.nunitv2driver/3.8.0",
+      "hashPath": "nunit.extension.nunitv2driver.3.8.0.nupkg.sha512"
+    },
+    "NUnit.Extension.NUnitV2ResultWriter/3.6.0": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-P/Nc+wgFRe3dT59/VjhiIT0SWfLMbb/Vc9AtBU3L71VOCs8zQnuNjCOEFLQL/Mq6XSaZeB2Sug9tUgTfCnQk9w==",
+      "path": "nunit.extension.nunitv2resultwriter/3.6.0",
+      "hashPath": "nunit.extension.nunitv2resultwriter.3.6.0.nupkg.sha512"
+    },
+    "NUnit.Extension.TeamCityEventListener/1.0.7": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-bw+ZwHsUmxqb9leo91qLEF7ggtdpawY2V6wNqHI6+ATa2SHxHxoxiV5UV07ZWDRpf/qlQJELNlZu7wIB3+w2qQ==",
+      "path": "nunit.extension.teamcityeventlistener/1.0.7",
+      "hashPath": "nunit.extension.teamcityeventlistener.1.0.7.nupkg.sha512"
+    },
+    "NUnit.Extension.VSProjectLoader/3.8.0": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-CIScV9a7+wUu6Ylb+WO0q/WGWQVoB05TUj3XZHa1CO+2BInDdfIVkqtlrSguhy6D/AGIMaLVrCZpQkQ2m0bbzQ==",
+      "path": "nunit.extension.vsprojectloader/3.8.0",
+      "hashPath": "nunit.extension.vsprojectloader.3.8.0.nupkg.sha512"
     },
     "NUnit3TestAdapter/4.4.2": {
       "type": "package",
@@ -1444,6 +1605,13 @@
       "path": "specflow/3.9.74",
       "hashPath": "specflow.3.9.74.nupkg.sha512"
     },
+    "SpecFlow.Allure/3.5.0.73": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-ohS1oUQ14tfqT+Ri/sQZnWmUPSATx3QNcFpzmND5Qn6/fSS2SFtVYZ8K0ZulBq/bAP2BiPR0cLXwslDB+Irx6A==",
+      "path": "specflow.allure/3.5.0.73",
+      "hashPath": "specflow.allure.3.5.0.73.nupkg.sha512"
+    },
     "SpecFlow.ExternalData/3.9.74": {
       "type": "package",
       "serviceable": true,
@@ -1464,6 +1632,13 @@
       "sha512": "sha512-nMPLztTT5IZDMnvNCUxklqaM+agn4kjuNy/qAcYQQOxau2G1MF73UxhL9OXjJQaEuPuyT8gJvXudOYCFZWztxA==",
       "path": "specflow.nunit/3.9.74",
       "hashPath": "specflow.nunit.3.9.74.nupkg.sha512"
+    },
+    "SpecFlow.NUnit.Runners/3.9.74": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-m595x3GM7CYco+KsXo96irQ2jcjC6+1+41bKdmnTdl3RAvnC4jUZ9f5B5FhGuaVK4+j4GwWi8MZtGMrT//zHLA==",
+      "path": "specflow.nunit.runners/3.9.74",
+      "hashPath": "specflow.nunit.runners.3.9.74.nupkg.sha512"
     },
     "SpecFlow.Plus.LivingDocPlugin/3.9.57": {
       "type": "package",
@@ -1506,6 +1681,20 @@
       "sha512": "sha512-ztl69Xp0Y/UXCL+3v3tEU+lIy+bvjKNUmopn1wep/a291pVPK7dxBd6T7WnlQqRog+d1a/hSsgRsmFnIBKTPLQ==",
       "path": "system.collections.concurrent/4.3.0",
       "hashPath": "system.collections.concurrent.4.3.0.nupkg.sha512"
+    },
+    "System.Collections.NonGeneric/4.3.0": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-prtjIEMhGUnQq6RnPEYLpFt8AtLbp9yq2zxOSrY7KJJZrw25Fi97IzBqY7iqssbM61Ek5b8f3MG/sG1N2sN5KA==",
+      "path": "system.collections.nongeneric/4.3.0",
+      "hashPath": "system.collections.nongeneric.4.3.0.nupkg.sha512"
+    },
+    "System.Collections.Specialized/4.3.0": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-Epx8PoVZR0iuOnJJDzp7pWvdfMMOAvpUo95pC4ScH2mJuXkKA2Y4aR3cG9qt2klHgSons1WFh4kcGW7cSXvrxg==",
+      "path": "system.collections.specialized/4.3.0",
+      "hashPath": "system.collections.specialized.4.3.0.nupkg.sha512"
     },
     "System.ComponentModel.Annotations/5.0.0": {
       "type": "package",

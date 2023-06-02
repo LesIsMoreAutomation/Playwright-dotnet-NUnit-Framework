@@ -2,6 +2,26 @@
   "version": 3,
   "targets": {
     "net6.0": {
+      "Allure.Commons/3.5.0.73": {
+        "type": "package",
+        "dependencies": {
+          "MimeTypesMap": "1.0.8",
+          "Newtonsoft.Json": "13.0.1"
+        },
+        "compile": {
+          "lib/netstandard2.0/Allure.Commons.dll": {}
+        },
+        "runtime": {
+          "lib/netstandard2.0/Allure.Commons.dll": {}
+        },
+        "contentFiles": {
+          "contentFiles/any/any/_._": {
+            "buildAction": "None",
+            "codeLanguage": "any",
+            "copyToOutput": false
+          }
+        }
+      },
       "BoDi/1.5.0": {
         "type": "package",
         "compile": {
@@ -16,6 +36,19 @@
         },
         "build": {
           "build/_._": {}
+        }
+      },
+      "CsvHelper/27.1.0": {
+        "type": "package",
+        "compile": {
+          "lib/net5.0/CsvHelper.dll": {
+            "related": ".xml"
+          }
+        },
+        "runtime": {
+          "lib/net5.0/CsvHelper.dll": {
+            "related": ".xml"
+          }
         }
       },
       "FluentAssertions/6.11.0": {
@@ -529,6 +562,15 @@
           "build/netcoreapp3.1/Microsoft.TestPlatform.TestHost.props": {}
         }
       },
+      "MimeTypesMap/1.0.8": {
+        "type": "package",
+        "compile": {
+          "lib/netstandard2.0/MimeTypesMap.dll": {}
+        },
+        "runtime": {
+          "lib/netstandard2.0/MimeTypesMap.dll": {}
+        }
+      },
       "NETStandard.Library/2.0.0": {
         "type": "package",
         "dependencies": {
@@ -588,6 +630,35 @@
         "build": {
           "build/NUnit.props": {}
         }
+      },
+      "NUnit.Console/3.12.0": {
+        "type": "package",
+        "dependencies": {
+          "NUnit.ConsoleRunner": "3.12.0",
+          "NUnit.Extension.NUnitProjectLoader": "3.6.0",
+          "NUnit.Extension.NUnitV2Driver": "3.8.0",
+          "NUnit.Extension.NUnitV2ResultWriter": "3.6.0",
+          "NUnit.Extension.TeamCityEventListener": "1.0.7",
+          "NUnit.Extension.VSProjectLoader": "3.8.0"
+        }
+      },
+      "NUnit.ConsoleRunner/3.12.0": {
+        "type": "package"
+      },
+      "NUnit.Extension.NUnitProjectLoader/3.6.0": {
+        "type": "package"
+      },
+      "NUnit.Extension.NUnitV2Driver/3.8.0": {
+        "type": "package"
+      },
+      "NUnit.Extension.NUnitV2ResultWriter/3.6.0": {
+        "type": "package"
+      },
+      "NUnit.Extension.TeamCityEventListener/1.0.7": {
+        "type": "package"
+      },
+      "NUnit.Extension.VSProjectLoader/3.8.0": {
+        "type": "package"
       },
       "NUnit3TestAdapter/4.4.2": {
         "type": "package",
@@ -798,6 +869,28 @@
           "build/SpecFlow.targets": {}
         }
       },
+      "SpecFlow.Allure/3.5.0.73": {
+        "type": "package",
+        "dependencies": {
+          "Allure.Commons": "3.5.0.73",
+          "CsvHelper": "27.1.0",
+          "SpecFlow": "[3.9.8, 3.10.0)",
+          "System.Collections.Specialized": "4.3.0"
+        },
+        "compile": {
+          "lib/netstandard2.0/Allure.SpecFlowPlugin.dll": {}
+        },
+        "runtime": {
+          "lib/netstandard2.0/Allure.SpecFlowPlugin.dll": {}
+        },
+        "contentFiles": {
+          "contentFiles/any/netstandard2.0/allureConfig.Template.json": {
+            "buildAction": "Content",
+            "codeLanguage": "any",
+            "copyToOutput": false
+          }
+        }
+      },
       "SpecFlow.ExternalData/3.9.74": {
         "type": "package",
         "dependencies": {
@@ -837,6 +930,14 @@
         "build": {
           "build/SpecFlow.NUnit.props": {},
           "build/SpecFlow.NUnit.targets": {}
+        }
+      },
+      "SpecFlow.NUnit.Runners/3.9.74": {
+        "type": "package",
+        "dependencies": {
+          "NUnit.Console": "3.12.0",
+          "NUnit3TestAdapter": "3.17.0",
+          "SpecFlow.NUnit": "[3.9.74]"
         }
       },
       "SpecFlow.Plus.LivingDocPlugin/3.9.57": {
@@ -929,6 +1030,45 @@
         },
         "runtime": {
           "lib/netstandard1.3/System.Collections.Concurrent.dll": {}
+        }
+      },
+      "System.Collections.NonGeneric/4.3.0": {
+        "type": "package",
+        "dependencies": {
+          "System.Diagnostics.Debug": "4.3.0",
+          "System.Globalization": "4.3.0",
+          "System.Resources.ResourceManager": "4.3.0",
+          "System.Runtime": "4.3.0",
+          "System.Runtime.Extensions": "4.3.0",
+          "System.Threading": "4.3.0"
+        },
+        "compile": {
+          "ref/netstandard1.3/_._": {
+            "related": ".xml"
+          }
+        },
+        "runtime": {
+          "lib/netstandard1.3/System.Collections.NonGeneric.dll": {}
+        }
+      },
+      "System.Collections.Specialized/4.3.0": {
+        "type": "package",
+        "dependencies": {
+          "System.Collections.NonGeneric": "4.3.0",
+          "System.Globalization": "4.3.0",
+          "System.Globalization.Extensions": "4.3.0",
+          "System.Resources.ResourceManager": "4.3.0",
+          "System.Runtime": "4.3.0",
+          "System.Runtime.Extensions": "4.3.0",
+          "System.Threading": "4.3.0"
+        },
+        "compile": {
+          "ref/netstandard1.3/System.Collections.Specialized.dll": {
+            "related": ".xml"
+          }
+        },
+        "runtime": {
+          "lib/netstandard1.3/System.Collections.Specialized.dll": {}
         }
       },
       "System.ComponentModel.Annotations/5.0.0": {
@@ -1914,6 +2054,23 @@
     }
   },
   "libraries": {
+    "Allure.Commons/3.5.0.73": {
+      "sha512": "cqMlst9Za1TfOsgN2fWzMkdUeOTy07AZHaudOuRVAjTyBmUxDKOKxCwlkxO1Xw91ogsPCdXIJdduUtFFGw+Thw==",
+      "type": "package",
+      "path": "allure.commons/3.5.0.73",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "allure-net.png",
+        "allure.commons.3.5.0.73.nupkg.sha512",
+        "allure.commons.nuspec",
+        "content/allureConfig.Template.json",
+        "contentFiles/any/net45/allureConfig.Template.json",
+        "contentFiles/any/netstandard2.0/allureConfig.Template.json",
+        "lib/net45/Allure.Commons.dll",
+        "lib/netstandard2.0/Allure.Commons.dll"
+      ]
+    },
     "BoDi/1.5.0": {
       "sha512": "CzIPzdIAFSd2zuLxI+0K9s48Qv3HQDbWiApn9h96j284rHs2bSPrn/PMca3mi4q3xLSEqOp+GUJ6+mXDD9prKg==",
       "type": "package",
@@ -1931,6 +2088,28 @@
         "lib/netstandard2.0/BoDi.dll",
         "lib/netstandard2.0/BoDi.pdb",
         "tools/_._"
+      ]
+    },
+    "CsvHelper/27.1.0": {
+      "sha512": "nrUpgvwEOq6xcdpvAMV0bnzVz1mHcPy9LjWXVbZq9pKs5nWdVFmUMoiEBsxY9+f1mR2Rdk0fOkK91OstYjTVxA==",
+      "type": "package",
+      "path": "csvhelper/27.1.0",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "Icon.png",
+        "csvhelper.27.1.0.nupkg.sha512",
+        "csvhelper.nuspec",
+        "lib/net45/CsvHelper.dll",
+        "lib/net45/CsvHelper.xml",
+        "lib/net47/CsvHelper.dll",
+        "lib/net47/CsvHelper.xml",
+        "lib/net5.0/CsvHelper.dll",
+        "lib/net5.0/CsvHelper.xml",
+        "lib/netstandard2.0/CsvHelper.dll",
+        "lib/netstandard2.0/CsvHelper.xml",
+        "lib/netstandard2.1/CsvHelper.dll",
+        "lib/netstandard2.1/CsvHelper.xml"
       ]
     },
     "FluentAssertions/6.11.0": {
@@ -2744,6 +2923,20 @@
         "microsoft.testplatform.testhost.nuspec"
       ]
     },
+    "MimeTypesMap/1.0.8": {
+      "sha512": "iOm6Zar+yVROhlyrGGSJTfThvNoHLUeYeQQND9YD/ot/nA2qsWUp9kP2MHTdF9P7I8afW6eCf8vdELLZjDFdSQ==",
+      "type": "package",
+      "path": "mimetypesmap/1.0.8",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "lib/net452/MimeTypesMap.dll",
+        "lib/netstandard1.1/MimeTypesMap.dll",
+        "lib/netstandard2.0/MimeTypesMap.dll",
+        "mimetypesmap.1.0.8.nupkg.sha512",
+        "mimetypesmap.nuspec"
+      ]
+    },
     "NETStandard.Library/2.0.0": {
       "sha512": "7jnbRU+L08FXKMxqUflxEXtVymWvNOrS8yHgu9s6EM8Anr6T/wIX4nZ08j/u3Asz+tCufp3YVwFSEvFTPYmBPA==",
       "type": "package",
@@ -2941,6 +3134,139 @@
         "lib/netstandard2.0/nunit.framework.xml",
         "nunit.3.13.3.nupkg.sha512",
         "nunit.nuspec"
+      ]
+    },
+    "NUnit.Console/3.12.0": {
+      "sha512": "9KXFnViEIKQjz4vqiYFpLV9sntfHxixQomLCJzDMXC6WDo9DP2GhDQiBND6we6MRStMSNzoAWgourbLKwo7utQ==",
+      "type": "package",
+      "path": "nunit.console/3.12.0",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "LICENSE.txt",
+        "images/nunit_256.png",
+        "nunit.console.3.12.0.nupkg.sha512",
+        "nunit.console.nuspec"
+      ]
+    },
+    "NUnit.ConsoleRunner/3.12.0": {
+      "sha512": "ZUtI8leU9ozCjLy4ZZ2X6ClU0hxfQtb95VOdmMA4SxIUvf62rIPxoHXS+jghvo5QxgRihGGcEp8xT3vCfgDdsA==",
+      "type": "package",
+      "path": "nunit.consolerunner/3.12.0",
+      "hasTools": true,
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "CHANGES.txt",
+        "LICENSE.txt",
+        "NOTICES.txt",
+        "images/nunit_256.png",
+        "nunit.consolerunner.3.12.0.nupkg.sha512",
+        "nunit.consolerunner.nuspec",
+        "tools/agents/net20/nunit-agent-x86.exe",
+        "tools/agents/net20/nunit-agent-x86.exe.config",
+        "tools/agents/net20/nunit-agent.exe",
+        "tools/agents/net20/nunit-agent.exe.config",
+        "tools/agents/net20/nunit.agent.addins",
+        "tools/agents/net20/nunit.engine.api.dll",
+        "tools/agents/net20/nunit.engine.api.xml",
+        "tools/agents/net20/nunit.engine.core.dll",
+        "tools/agents/net20/testcentric.engine.metadata.dll",
+        "tools/agents/net40/nunit-agent-x86.exe",
+        "tools/agents/net40/nunit-agent-x86.exe.config",
+        "tools/agents/net40/nunit-agent.exe",
+        "tools/agents/net40/nunit-agent.exe.config",
+        "tools/agents/net40/nunit.agent.addins",
+        "tools/agents/net40/nunit.engine.api.dll",
+        "tools/agents/net40/nunit.engine.api.xml",
+        "tools/agents/net40/nunit.engine.core.dll",
+        "tools/agents/net40/testcentric.engine.metadata.dll",
+        "tools/nunit.console.nuget.addins",
+        "tools/nunit.engine.api.dll",
+        "tools/nunit.engine.api.xml",
+        "tools/nunit.engine.core.dll",
+        "tools/nunit.engine.dll",
+        "tools/nunit3-console.exe",
+        "tools/nunit3-console.exe.config",
+        "tools/testcentric.engine.metadata.dll"
+      ]
+    },
+    "NUnit.Extension.NUnitProjectLoader/3.6.0": {
+      "sha512": "ev2+dCJShMNIATkYNm/vHEuieBfbismr9DcUfBvafJZf5vNyugXPuMXO/MaOFcJaoW9j6/zjMmXKG7R5umWzXA==",
+      "type": "package",
+      "path": "nunit.extension.nunitprojectloader/3.6.0",
+      "hasTools": true,
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "CHANGES.txt",
+        "LICENSE.txt",
+        "nunit.extension.nunitprojectloader.3.6.0.nupkg.sha512",
+        "nunit.extension.nunitprojectloader.nuspec",
+        "tools/nunit-project-loader.dll"
+      ]
+    },
+    "NUnit.Extension.NUnitV2Driver/3.8.0": {
+      "sha512": "l6MgFJPTnrlDaMXWfbUZ82h1uvtj0C1ExPpqm6HrYOBa5Z4MBwmFLqj85rnv9JMhu/Ju7jQB/FIaMbfoXInI2A==",
+      "type": "package",
+      "path": "nunit.extension.nunitv2driver/3.8.0",
+      "hasTools": true,
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "CHANGES.txt",
+        "LICENSE.txt",
+        "nunit.extension.nunitv2driver.3.8.0.nupkg.sha512",
+        "nunit.extension.nunitv2driver.nuspec",
+        "tools/nunit.core.dll",
+        "tools/nunit.core.interfaces.dll",
+        "tools/nunit.v2.driver.addins",
+        "tools/nunit.v2.driver.dll"
+      ]
+    },
+    "NUnit.Extension.NUnitV2ResultWriter/3.6.0": {
+      "sha512": "P/Nc+wgFRe3dT59/VjhiIT0SWfLMbb/Vc9AtBU3L71VOCs8zQnuNjCOEFLQL/Mq6XSaZeB2Sug9tUgTfCnQk9w==",
+      "type": "package",
+      "path": "nunit.extension.nunitv2resultwriter/3.6.0",
+      "hasTools": true,
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "CHANGES.txt",
+        "LICENSE.txt",
+        "nunit.extension.nunitv2resultwriter.3.6.0.nupkg.sha512",
+        "nunit.extension.nunitv2resultwriter.nuspec",
+        "tools/nunit-v2-result-writer.dll"
+      ]
+    },
+    "NUnit.Extension.TeamCityEventListener/1.0.7": {
+      "sha512": "bw+ZwHsUmxqb9leo91qLEF7ggtdpawY2V6wNqHI6+ATa2SHxHxoxiV5UV07ZWDRpf/qlQJELNlZu7wIB3+w2qQ==",
+      "type": "package",
+      "path": "nunit.extension.teamcityeventlistener/1.0.7",
+      "hasTools": true,
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "CHANGES.txt",
+        "LICENSE.txt",
+        "nunit.extension.teamcityeventlistener.1.0.7.nupkg.sha512",
+        "nunit.extension.teamcityeventlistener.nuspec",
+        "tools/teamcity-event-listener.dll"
+      ]
+    },
+    "NUnit.Extension.VSProjectLoader/3.8.0": {
+      "sha512": "CIScV9a7+wUu6Ylb+WO0q/WGWQVoB05TUj3XZHa1CO+2BInDdfIVkqtlrSguhy6D/AGIMaLVrCZpQkQ2m0bbzQ==",
+      "type": "package",
+      "path": "nunit.extension.vsprojectloader/3.8.0",
+      "hasTools": true,
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "CHANGES.txt",
+        "LICENSE.txt",
+        "nunit.extension.vsprojectloader.3.8.0.nupkg.sha512",
+        "nunit.extension.vsprojectloader.nuspec",
+        "tools/vs-project-loader.dll"
       ]
     },
     "NUnit3TestAdapter/4.4.2": {
@@ -3219,6 +3545,23 @@
         "specflow.nuspec"
       ]
     },
+    "SpecFlow.Allure/3.5.0.73": {
+      "sha512": "ohS1oUQ14tfqT+Ri/sQZnWmUPSATx3QNcFpzmND5Qn6/fSS2SFtVYZ8K0ZulBq/bAP2BiPR0cLXwslDB+Irx6A==",
+      "type": "package",
+      "path": "specflow.allure/3.5.0.73",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "allure-specflow.png",
+        "content/allureConfig.Template.json",
+        "contentFiles/any/net461/allureConfig.Template.json",
+        "contentFiles/any/netstandard2.0/allureConfig.Template.json",
+        "lib/net461/Allure.SpecFlowPlugin.dll",
+        "lib/netstandard2.0/Allure.SpecFlowPlugin.dll",
+        "specflow.allure.3.5.0.73.nupkg.sha512",
+        "specflow.allure.nuspec"
+      ]
+    },
     "SpecFlow.ExternalData/3.9.74": {
       "sha512": "PAj5/scWWqET+fxjDwi/mJyLDJN1cuKvw6YuRNg2bNH+tcKXAqy8nlFNPXMc5AgfimdIRb3WredGD5e/MK/vxw==",
       "type": "package",
@@ -3432,6 +3775,19 @@
         "lib/netstandard2.0/TechTalk.SpecFlow.NUnit.SpecFlowPlugin.pdb",
         "specflow.nunit.3.9.74.nupkg.sha512",
         "specflow.nunit.nuspec"
+      ]
+    },
+    "SpecFlow.NUnit.Runners/3.9.74": {
+      "sha512": "m595x3GM7CYco+KsXo96irQ2jcjC6+1+41bKdmnTdl3RAvnC4jUZ9f5B5FhGuaVK4+j4GwWi8MZtGMrT//zHLA==",
+      "type": "package",
+      "path": "specflow.nunit.runners/3.9.74",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "LICENSE.txt",
+        "images/specflow-icon.png",
+        "specflow.nunit.runners.3.9.74.nupkg.sha512",
+        "specflow.nunit.runners.nuspec"
       ]
     },
     "SpecFlow.Plus.LivingDocPlugin/3.9.57": {
@@ -3909,6 +4265,84 @@
         "ref/xamarinwatchos10/_._",
         "system.collections.concurrent.4.3.0.nupkg.sha512",
         "system.collections.concurrent.nuspec"
+      ]
+    },
+    "System.Collections.NonGeneric/4.3.0": {
+      "sha512": "prtjIEMhGUnQq6RnPEYLpFt8AtLbp9yq2zxOSrY7KJJZrw25Fi97IzBqY7iqssbM61Ek5b8f3MG/sG1N2sN5KA==",
+      "type": "package",
+      "path": "system.collections.nongeneric/4.3.0",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "ThirdPartyNotices.txt",
+        "dotnet_library_license.txt",
+        "lib/MonoAndroid10/_._",
+        "lib/MonoTouch10/_._",
+        "lib/net46/System.Collections.NonGeneric.dll",
+        "lib/netstandard1.3/System.Collections.NonGeneric.dll",
+        "lib/xamarinios10/_._",
+        "lib/xamarinmac20/_._",
+        "lib/xamarintvos10/_._",
+        "lib/xamarinwatchos10/_._",
+        "ref/MonoAndroid10/_._",
+        "ref/MonoTouch10/_._",
+        "ref/net46/System.Collections.NonGeneric.dll",
+        "ref/netstandard1.3/System.Collections.NonGeneric.dll",
+        "ref/netstandard1.3/System.Collections.NonGeneric.xml",
+        "ref/netstandard1.3/de/System.Collections.NonGeneric.xml",
+        "ref/netstandard1.3/es/System.Collections.NonGeneric.xml",
+        "ref/netstandard1.3/fr/System.Collections.NonGeneric.xml",
+        "ref/netstandard1.3/it/System.Collections.NonGeneric.xml",
+        "ref/netstandard1.3/ja/System.Collections.NonGeneric.xml",
+        "ref/netstandard1.3/ko/System.Collections.NonGeneric.xml",
+        "ref/netstandard1.3/ru/System.Collections.NonGeneric.xml",
+        "ref/netstandard1.3/zh-hans/System.Collections.NonGeneric.xml",
+        "ref/netstandard1.3/zh-hant/System.Collections.NonGeneric.xml",
+        "ref/xamarinios10/_._",
+        "ref/xamarinmac20/_._",
+        "ref/xamarintvos10/_._",
+        "ref/xamarinwatchos10/_._",
+        "system.collections.nongeneric.4.3.0.nupkg.sha512",
+        "system.collections.nongeneric.nuspec"
+      ]
+    },
+    "System.Collections.Specialized/4.3.0": {
+      "sha512": "Epx8PoVZR0iuOnJJDzp7pWvdfMMOAvpUo95pC4ScH2mJuXkKA2Y4aR3cG9qt2klHgSons1WFh4kcGW7cSXvrxg==",
+      "type": "package",
+      "path": "system.collections.specialized/4.3.0",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "ThirdPartyNotices.txt",
+        "dotnet_library_license.txt",
+        "lib/MonoAndroid10/_._",
+        "lib/MonoTouch10/_._",
+        "lib/net46/System.Collections.Specialized.dll",
+        "lib/netstandard1.3/System.Collections.Specialized.dll",
+        "lib/xamarinios10/_._",
+        "lib/xamarinmac20/_._",
+        "lib/xamarintvos10/_._",
+        "lib/xamarinwatchos10/_._",
+        "ref/MonoAndroid10/_._",
+        "ref/MonoTouch10/_._",
+        "ref/net46/System.Collections.Specialized.dll",
+        "ref/netstandard1.3/System.Collections.Specialized.dll",
+        "ref/netstandard1.3/System.Collections.Specialized.xml",
+        "ref/netstandard1.3/de/System.Collections.Specialized.xml",
+        "ref/netstandard1.3/es/System.Collections.Specialized.xml",
+        "ref/netstandard1.3/fr/System.Collections.Specialized.xml",
+        "ref/netstandard1.3/it/System.Collections.Specialized.xml",
+        "ref/netstandard1.3/ja/System.Collections.Specialized.xml",
+        "ref/netstandard1.3/ko/System.Collections.Specialized.xml",
+        "ref/netstandard1.3/ru/System.Collections.Specialized.xml",
+        "ref/netstandard1.3/zh-hans/System.Collections.Specialized.xml",
+        "ref/netstandard1.3/zh-hant/System.Collections.Specialized.xml",
+        "ref/xamarinios10/_._",
+        "ref/xamarinmac20/_._",
+        "ref/xamarintvos10/_._",
+        "ref/xamarinwatchos10/_._",
+        "system.collections.specialized.4.3.0.nupkg.sha512",
+        "system.collections.specialized.nuspec"
       ]
     },
     "System.ComponentModel.Annotations/5.0.0": {
@@ -6525,9 +6959,14 @@
       "Microsoft.Playwright >= 1.34.0",
       "NUnit3TestAdapter >= 4.4.2",
       "PuppeteerSharp >= 10.0.0",
+      "SpecFlow >= 3.9.74",
+      "SpecFlow.Allure >= 3.5.0.73",
       "SpecFlow.ExternalData >= 3.9.74",
+      "SpecFlow.Internal.Json >= 1.0.8",
       "SpecFlow.NUnit >= 3.9.74",
+      "SpecFlow.NUnit.Runners >= 3.9.74",
       "SpecFlow.Plus.LivingDocPlugin >= 3.9.57",
+      "SpecFlow.Tools.MsBuild.Generation >= 3.9.74",
       "nunit >= 3.13.3"
     ]
   },
@@ -6537,11 +6976,11 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "C:\\Users\\lesibana.moselakgomo\\OneDrive - Investec\\Desktop\\Playwright-dotnet-NUnit-Framework\\SpecFlowWithPlaywright.csproj",
+      "projectUniqueName": "C:\\Auto\\Playwright-dotnet-NUnit-Framework\\SpecFlowWithPlaywright.csproj",
       "projectName": "SpecFlowWithPlaywright",
-      "projectPath": "C:\\Users\\lesibana.moselakgomo\\OneDrive - Investec\\Desktop\\Playwright-dotnet-NUnit-Framework\\SpecFlowWithPlaywright.csproj",
+      "projectPath": "C:\\Auto\\Playwright-dotnet-NUnit-Framework\\SpecFlowWithPlaywright.csproj",
       "packagesPath": "C:\\Users\\lesibana.moselakgomo\\.nuget\\packages\\",
-      "outputPath": "C:\\Users\\lesibana.moselakgomo\\OneDrive - Investec\\Desktop\\Playwright-dotnet-NUnit-Framework\\obj\\",
+      "outputPath": "C:\\Auto\\Playwright-dotnet-NUnit-Framework\\obj\\",
       "projectStyle": "PackageReference",
       "configFilePaths": [
         "C:\\Users\\lesibana.moselakgomo\\AppData\\Roaming\\NuGet\\NuGet.Config",
@@ -6590,17 +7029,37 @@
             "target": "Package",
             "version": "[10.0.0, )"
           },
+          "SpecFlow": {
+            "target": "Package",
+            "version": "[3.9.74, )"
+          },
+          "SpecFlow.Allure": {
+            "target": "Package",
+            "version": "[3.5.0.73, )"
+          },
           "SpecFlow.ExternalData": {
             "target": "Package",
             "version": "[3.9.74, )"
           },
+          "SpecFlow.Internal.Json": {
+            "target": "Package",
+            "version": "[1.0.8, )"
+          },
           "SpecFlow.NUnit": {
+            "target": "Package",
+            "version": "[3.9.74, )"
+          },
+          "SpecFlow.NUnit.Runners": {
             "target": "Package",
             "version": "[3.9.74, )"
           },
           "SpecFlow.Plus.LivingDocPlugin": {
             "target": "Package",
             "version": "[3.9.57, )"
+          },
+          "SpecFlow.Tools.MsBuild.Generation": {
+            "target": "Package",
+            "version": "[3.9.74, )"
           },
           "nunit": {
             "target": "Package",
