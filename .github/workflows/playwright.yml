@@ -1,52 +1,21 @@
-name: SpecFlow Playwright Tests
-
+name: Playwright Tests
 on:
   push:
-    branches:
-      - main
+    branches: [ main, master ]
   pull_request:
-    branches:
-      - main
-
+    branches: [ main, master ]
 jobs:
-  build:
-
+  test:
+    timeout-minutes: 60
     runs-on: ubuntu-latest
-
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v2
-
-    - name: Setup Node.js
-      uses: actions/setup-node@v2
+    - uses: actions/checkout@v3
+    - name: Setup dotnet
+      uses: actions/setup-dotnet@v3
       with:
-        node-version: '14'
-
-    - name: Setup .NET
-      uses: actions/setup-dotnet@v1
-      with:
-        dotnet-version: '6.0.100-preview.7.21379.14'
-
-    - name: Restore dependencies
-      run: dotnet restore
-
-    - name: Build project
-      run: dotnet build --configuration Release
-
-    - name: Install Playwright
-      run: dotnet tool install --global Microsoft.Playwright.CLI
-
-    - name: Install Playwright dependencies
-      run: npx playwright install
-
-    - name: Install @playwright/test
-      run: npm install -D @playwright/test
-
-    - name: Run tests
-      run: npx playwright test --browser chromium --workers 2
-
-    - name: Publish test results
-      uses: actions/upload-artifact@v2
-      with:
-        name: Test Results
-        path: TestResults/*.xml
+        dotnet-version: 6.0.x
+    - run: dotnet build
+    - name: Ensure browsers are installed
+      run: pwsh bin/Debug/net6.0/playwright.ps1 install --with-deps
+    - name: Run your tests
+      run: dotnet test
