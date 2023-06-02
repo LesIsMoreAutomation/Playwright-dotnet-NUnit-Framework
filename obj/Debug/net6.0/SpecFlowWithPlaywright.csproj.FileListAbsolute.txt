@@ -1272,7 +1272,3 @@ C:\Auto\Playwright-dotnet-NUnit-Framework\obj\Debug\net6.0\refint\SpecFlowWithPl
 C:\Auto\Playwright-dotnet-NUnit-Framework\obj\Debug\net6.0\SpecFlowWithPlaywright.pdb
 C:\Auto\Playwright-dotnet-NUnit-Framework\obj\Debug\net6.0\SpecFlowWithPlaywright.genruntimeconfig.cache
 C:\Auto\Playwright-dotnet-NUnit-Framework\obj\Debug\net6.0\ref\SpecFlowWithPlaywright.dll
-C:\Auto\Playwright-dotnet-NUnit-Framework\bin\Debug\net6.0\Allure.Commons.dll
-C:\Auto\Playwright-dotnet-NUnit-Framework\bin\Debug\net6.0\CsvHelper.dll
-C:\Auto\Playwright-dotnet-NUnit-Framework\bin\Debug\net6.0\MimeTypesMap.dll
-C:\Auto\Playwright-dotnet-NUnit-Framework\bin\Debug\net6.0\Allure.SpecFlowPlugin.dll

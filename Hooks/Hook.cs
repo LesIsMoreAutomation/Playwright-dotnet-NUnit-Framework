@@ -39,7 +39,7 @@ namespace SpecFlowWithPlaywright.Hooks
          public async Task<IPage> createBrowser()
                 {
                     playwright = await Playwright.CreateAsync();
-                    BrowserTypeLaunchOptions typeLaunchOptions = new BrowserTypeLaunchOptions{ Headless = false, Timeout = 60000, Channel = "chromium" };
+                    BrowserTypeLaunchOptions typeLaunchOptions = new BrowserTypeLaunchOptions{ Headless = true, Timeout = 60000, Channel = "chromium" };
                     browser = await playwright.Chromium.LaunchAsync(typeLaunchOptions);
                     context = await browser.NewContextAsync();
                     bool enableTracing = false;

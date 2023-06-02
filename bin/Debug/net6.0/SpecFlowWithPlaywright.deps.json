@@ -14,7 +14,6 @@
           "NUnit3TestAdapter": "4.4.2",
           "PuppeteerSharp": "10.0.0",
           "SpecFlow": "3.9.74",
-          "SpecFlow.Allure": "3.5.0.73",
           "SpecFlow.ExternalData": "3.9.74",
           "SpecFlow.Internal.Json": "1.0.8",
           "SpecFlow.NUnit": "3.9.74",
@@ -27,31 +26,11 @@
           "SpecFlowWithPlaywright.dll": {}
         }
       },
-      "Allure.Commons/3.5.0.73": {
-        "dependencies": {
-          "MimeTypesMap": "1.0.8",
-          "Newtonsoft.Json": "13.0.1"
-        },
-        "runtime": {
-          "lib/netstandard2.0/Allure.Commons.dll": {
-            "assemblyVersion": "3.5.0.73",
-            "fileVersion": "3.5.0.73"
-          }
-        }
-      },
       "BoDi/1.5.0": {
         "runtime": {
           "lib/netstandard2.0/BoDi.dll": {
             "assemblyVersion": "1.5.0.0",
             "fileVersion": "1.5.0.0"
-          }
-        }
-      },
-      "CsvHelper/27.1.0": {
-        "runtime": {
-          "lib/net5.0/CsvHelper.dll": {
-            "assemblyVersion": "27.0.0.0",
-            "fileVersion": "27.1.0.0"
           }
         }
       },
@@ -468,14 +447,6 @@
           }
         }
       },
-      "MimeTypesMap/1.0.8": {
-        "runtime": {
-          "lib/netstandard2.0/MimeTypesMap.dll": {
-            "assemblyVersion": "1.0.8.0",
-            "fileVersion": "1.0.8.0"
-          }
-        }
-      },
       "NETStandard.Library/2.0.0": {
         "dependencies": {
           "Microsoft.NETCore.Platforms": "2.0.0"
@@ -599,20 +570,6 @@
           }
         }
       },
-      "SpecFlow.Allure/3.5.0.73": {
-        "dependencies": {
-          "Allure.Commons": "3.5.0.73",
-          "CsvHelper": "27.1.0",
-          "SpecFlow": "3.9.74",
-          "System.Collections.Specialized": "4.3.0"
-        },
-        "runtime": {
-          "lib/netstandard2.0/Allure.SpecFlowPlugin.dll": {
-            "assemblyVersion": "3.5.0.73",
-            "fileVersion": "3.5.0.73"
-          }
-        }
-      },
       "SpecFlow.ExternalData/3.9.74": {
         "dependencies": {
           "SpecFlow": "3.9.74"
@@ -693,27 +650,6 @@
           "System.Runtime.Extensions": "4.3.0",
           "System.Threading": "4.3.0",
           "System.Threading.Tasks": "4.3.0"
-        }
-      },
-      "System.Collections.NonGeneric/4.3.0": {
-        "dependencies": {
-          "System.Diagnostics.Debug": "4.3.0",
-          "System.Globalization": "4.3.0",
-          "System.Resources.ResourceManager": "4.3.0",
-          "System.Runtime": "4.3.0",
-          "System.Runtime.Extensions": "4.3.0",
-          "System.Threading": "4.3.0"
-        }
-      },
-      "System.Collections.Specialized/4.3.0": {
-        "dependencies": {
-          "System.Collections.NonGeneric": "4.3.0",
-          "System.Globalization": "4.3.0",
-          "System.Globalization.Extensions": "4.3.0",
-          "System.Resources.ResourceManager": "4.3.0",
-          "System.Runtime": "4.3.0",
-          "System.Runtime.Extensions": "4.3.0",
-          "System.Threading": "4.3.0"
         }
       },
       "System.ComponentModel.Annotations/5.0.0": {},
@@ -1241,26 +1177,12 @@
       "serviceable": false,
       "sha512": ""
     },
-    "Allure.Commons/3.5.0.73": {
-      "type": "package",
-      "serviceable": true,
-      "sha512": "sha512-cqMlst9Za1TfOsgN2fWzMkdUeOTy07AZHaudOuRVAjTyBmUxDKOKxCwlkxO1Xw91ogsPCdXIJdduUtFFGw+Thw==",
-      "path": "allure.commons/3.5.0.73",
-      "hashPath": "allure.commons.3.5.0.73.nupkg.sha512"
-    },
     "BoDi/1.5.0": {
       "type": "package",
       "serviceable": true,
       "sha512": "sha512-CzIPzdIAFSd2zuLxI+0K9s48Qv3HQDbWiApn9h96j284rHs2bSPrn/PMca3mi4q3xLSEqOp+GUJ6+mXDD9prKg==",
       "path": "bodi/1.5.0",
       "hashPath": "bodi.1.5.0.nupkg.sha512"
-    },
-    "CsvHelper/27.1.0": {
-      "type": "package",
-      "serviceable": true,
-      "sha512": "sha512-nrUpgvwEOq6xcdpvAMV0bnzVz1mHcPy9LjWXVbZq9pKs5nWdVFmUMoiEBsxY9+f1mR2Rdk0fOkK91OstYjTVxA==",
-      "path": "csvhelper/27.1.0",
-      "hashPath": "csvhelper.27.1.0.nupkg.sha512"
     },
     "FluentAssertions/6.11.0": {
       "type": "package",
@@ -1394,13 +1316,6 @@
       "sha512": "sha512-7YdgUcIeCPVKLC7n7LNKDiEHWc7z3brkkYPdUbDnFsvf6WvY9UfzS0VSUJ8P2NgN0CDSD223GCJFSjSBLZRqOQ==",
       "path": "microsoft.testplatform.testhost/17.6.0",
       "hashPath": "microsoft.testplatform.testhost.17.6.0.nupkg.sha512"
-    },
-    "MimeTypesMap/1.0.8": {
-      "type": "package",
-      "serviceable": true,
-      "sha512": "sha512-iOm6Zar+yVROhlyrGGSJTfThvNoHLUeYeQQND9YD/ot/nA2qsWUp9kP2MHTdF9P7I8afW6eCf8vdELLZjDFdSQ==",
-      "path": "mimetypesmap/1.0.8",
-      "hashPath": "mimetypesmap.1.0.8.nupkg.sha512"
     },
     "NETStandard.Library/2.0.0": {
       "type": "package",
@@ -1605,13 +1520,6 @@
       "path": "specflow/3.9.74",
       "hashPath": "specflow.3.9.74.nupkg.sha512"
     },
-    "SpecFlow.Allure/3.5.0.73": {
-      "type": "package",
-      "serviceable": true,
-      "sha512": "sha512-ohS1oUQ14tfqT+Ri/sQZnWmUPSATx3QNcFpzmND5Qn6/fSS2SFtVYZ8K0ZulBq/bAP2BiPR0cLXwslDB+Irx6A==",
-      "path": "specflow.allure/3.5.0.73",
-      "hashPath": "specflow.allure.3.5.0.73.nupkg.sha512"
-    },
     "SpecFlow.ExternalData/3.9.74": {
       "type": "package",
       "serviceable": true,
@@ -1681,20 +1589,6 @@
       "sha512": "sha512-ztl69Xp0Y/UXCL+3v3tEU+lIy+bvjKNUmopn1wep/a291pVPK7dxBd6T7WnlQqRog+d1a/hSsgRsmFnIBKTPLQ==",
       "path": "system.collections.concurrent/4.3.0",
       "hashPath": "system.collections.concurrent.4.3.0.nupkg.sha512"
-    },
-    "System.Collections.NonGeneric/4.3.0": {
-      "type": "package",
-      "serviceable": true,
-      "sha512": "sha512-prtjIEMhGUnQq6RnPEYLpFt8AtLbp9yq2zxOSrY7KJJZrw25Fi97IzBqY7iqssbM61Ek5b8f3MG/sG1N2sN5KA==",
-      "path": "system.collections.nongeneric/4.3.0",
-      "hashPath": "system.collections.nongeneric.4.3.0.nupkg.sha512"
-    },
-    "System.Collections.Specialized/4.3.0": {
-      "type": "package",
-      "serviceable": true,
-      "sha512": "sha512-Epx8PoVZR0iuOnJJDzp7pWvdfMMOAvpUo95pC4ScH2mJuXkKA2Y4aR3cG9qt2klHgSons1WFh4kcGW7cSXvrxg==",
-      "path": "system.collections.specialized/4.3.0",
-      "hashPath": "system.collections.specialized.4.3.0.nupkg.sha512"
     },
     "System.ComponentModel.Annotations/5.0.0": {
       "type": "package",
