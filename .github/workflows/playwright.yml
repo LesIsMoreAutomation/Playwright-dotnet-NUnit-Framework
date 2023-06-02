@@ -29,8 +29,11 @@ jobs:
       - name: Run tests
         run: dotnet test
 
+      - name: Install SpecFlow+LivingDoc NuGet package
+        run: dotnet add package SpecFlow.Plus.LivingDocPlugin --version x.x.x
+
       - name: Generate SpecFlow+LivingDoc report
-        run: dotnet livingdoc test-assembly bin/Debug/net6.0/SpecFlowWithPlaywright.dll -t TestExecution.json
+        run: dotnet livingdoc feature --input=TestExecution.json --output=./LivingDoc/index.html
 
       - name: Publish SpecFlow+LivingDoc report
         uses: actions/upload-artifact@v2
