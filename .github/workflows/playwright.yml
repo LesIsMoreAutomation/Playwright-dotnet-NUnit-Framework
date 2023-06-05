@@ -29,11 +29,18 @@ jobs:
       - name: Run tests
         run: dotnet test
 
-      - name: Generate SpecFlow+LivingDoc report
-        run: livingdoc feature --input=TestExecution.json --output=./LivingDoc/index.html
+      - name: Install dotnet-livingdoc CLI
+        run: dotnet tool install --global SpecFlow.Plus.LivingDoc.CLI
 
-      - name: Publish SpecFlow+LivingDoc report
+      - name: Generate LivingDoc report
+        working-directory: bin/Debug/net6.0
+        run: livingdoc test-assembly SpecFlowWithPlaywright.dll -t TestExecution.json
+
+      - name: Zip LivingDoc HTML artifacts
+        run: zip -r LivingDoc.zip bin/Debug/net6.0/LivingDoc.html
+
+      - name: Upload LivingDoc HTML artifacts
         uses: actions/upload-artifact@v2
         with:
-          name: SpecFlow+LivingDoc Report
-          path: ./LivingDoc
+          name: LivingDoc HTML
+          path: LivingDoc.zip
