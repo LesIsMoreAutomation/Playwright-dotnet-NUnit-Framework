@@ -37,6 +37,10 @@ jobs:
         displayName: 'Publish Test Project'
         condition: succeeded()
 
+      - script: dotnet test 'SpecFlowWithPlaywright.csproj' --configuration Release --logger trx --results-directory $(Build.ArtifactStagingDirectory)/TestResults
+        displayName: 'Run Tests'
+        condition: succeeded()
+
       - publish: $(Build.ArtifactStagingDirectory)
         displayName: 'Publish Artifacts'
         artifact: 'drop'
