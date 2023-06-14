@@ -2,12 +2,21 @@ trigger:
   branches:
     include:
       - main
+  paths:
+    include:
+      - Playwright-dotnet-NUnit-Framework/*
+      - nuget.config
+
+pr:
+  branches:
+    include:
+      - '*'
 
 jobs:
   - job: build
     displayName: 'Build Job'
     pool:
-      vmImage: 'windows-latest'
+      vmImage: 'ubuntu-latest'
     steps:
       - checkout: self
         clean: true
@@ -23,12 +32,11 @@ jobs:
 
       - script: dotnet build 'SpecFlowWithPlaywright.csproj' --configuration Release
         displayName: 'Build Projects'
+        condition: succeeded()
 
-      - powershell: |
-          dotnet tool install --global Microsoft.Playwright.CLI
-          playwright install
-        displayName: 'Install Playwright'
-
+      - script: pwsh bin/Debug/net6.0/playwright.ps1 install --with-deps
+        displayName: 'Install Playwright browsers'
+      
       - script: dotnet test 'SpecFlowWithPlaywright.csproj' --configuration Release --logger trx --results-directory $(Build.ArtifactStagingDirectory)/TestResults
         displayName: 'Run Tests'
         condition: succeeded()
