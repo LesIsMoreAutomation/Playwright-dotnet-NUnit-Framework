@@ -37,6 +37,9 @@ jobs:
         displayName: 'Publish Test Project'
         condition: succeeded()
 
+      - script: pwsh bin/Debug/net6.0/playwright.ps1 install --with-deps
+        displayName: 'Install Playwright browsers'
+      
       - script: dotnet test 'SpecFlowWithPlaywright.csproj' --configuration Release --logger trx --results-directory $(Build.ArtifactStagingDirectory)/TestResults
         displayName: 'Run Tests'
         condition: succeeded()
