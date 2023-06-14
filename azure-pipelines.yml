@@ -32,12 +32,9 @@ jobs:
 
       - script: dotnet build 'SpecFlowWithPlaywright.csproj' --configuration Release
         displayName: 'Build Projects'
-
-      - script: dotnet publish 'SpecFlowWithPlaywright.csproj' --configuration Release --output $(Build.ArtifactStagingDirectory)
-        displayName: 'Publish Test Project'
         condition: succeeded()
 
-      - script: pwsh bin/Debug/net6.0/playwright.ps1 install --with-deps
+      - script: pwsh bin/Debug/netX/playwright.ps1 install --with-deps
         displayName: 'Install Playwright browsers'
       
       - script: dotnet test 'SpecFlowWithPlaywright.csproj' --configuration Release --logger trx --results-directory $(Build.ArtifactStagingDirectory)/TestResults
