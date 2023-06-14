@@ -17,8 +17,6 @@ steps:
 - script: dotnet test --configuration Release
   displayName: 'Run tests'
 
-- script: dotnet tool install --global LivingDoc.CLI
-  displayName: 'Install LivingDoc CLI'
 
 - script: livingdoc test-assembly SpecFlowWithPlaywright.dll -t TestExecution.json
   displayName: 'Generate LivingDoc report'
