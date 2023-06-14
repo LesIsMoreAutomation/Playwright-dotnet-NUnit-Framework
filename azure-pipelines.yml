@@ -2,30 +2,58 @@ trigger:
   branches:
     include:
       - main
+  paths:
+    include:
+      - Playwright-dotnet-NUnit-Framework/*
+      - nuget.config
 
-pool:
-  vmImage: ubuntu-latest
+pr:
+  branches:
+    include:
+      - '*'
 
-steps:
-  - task: UseDotNet@2
-    inputs:
-      packageType: sdk
-      version: '6.0.x'
-    displayName: 'Use .NET SDK'
+jobs:
+  - job: build
+    displayName: 'Build Job'
+    pool:
+      vmImage: 'ubuntu-latest'
+    steps:
+      - checkout: self
+        clean: true
 
-  - task: UseDotNet@2
-    displayName: 'Restore Packages'
-    inputs:
-      command: 'restore'
-      projects: 'tests/tests.csproj'
-      feedsToUse: 'config'
-      nugetConfigPath: 'nuget.config'
+      - task: UseDotNet@2
+        displayName: 'Install .Net 6.0'
+        inputs:
+          packageType: 'sdk'
+          version: '6.0.x'
 
-  - script: dotnet build --configuration Release
-    displayName: 'Build'
+      - task: DotNetCoreCLI@2
+        displayName: 'Restore Packages'
+        inputs:
+          command: 'restore'
+          projects: 'Playwright-dotnet-NUnit-Framework/SpecFlowWithPlaywright.csproj'
+          feedsToUse: 'config'
+          nugetConfigPath: 'nuget.config'
 
-  - script: pwsh bin/Debug/net6.0/playwright.ps1 install --with-deps
-    displayName: 'Install Playwright browsers'
+      - task: DotNetCoreCLI@2
+        displayName: 'Build Projects'
+        inputs:
+          command: 'build'
+          projects: 'Playwright-dotnet-NUnit-Framework/SpecFlowWithPlaywright.csproj'
+          arguments: '--no-restore -c Release /p:Platform=x64 /p:Version=$(Build.BuildNumber)'
 
-  - script: dotnet test --configuration Release
-    displayName: 'Run tests'
+      - task: DotNetCoreCLI@2
+        displayName: 'Publish Test Project'
+        condition: succeeded()
+        inputs:
+          command: 'publish'
+          publishWebProjects: false
+          projects: '$(testProject)'
+          arguments: '-c Release -o $(Build.ArtifactStagingDirectory)'
+          zipAfterPublish: false
+          modifyOutputPath: false
+          workingDirectory: '$(build.sourcesDirectory)'
+
+      - publish: $(Build.ArtifactStagingDirectory)
+        displayName: 'Publish Artifacts'
+        artifact: 'drop'
