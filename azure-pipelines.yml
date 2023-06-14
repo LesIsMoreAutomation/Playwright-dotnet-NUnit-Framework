@@ -27,32 +27,15 @@ jobs:
           packageType: 'sdk'
           version: '6.0.x'
 
-      - task: DotNetCoreCLI@2
+      - script: dotnet restore 'Playwright-dotnet-NUnit-Framework/SpecFlowWithPlaywright.csproj'
         displayName: 'Restore Packages'
-        inputs:
-          command: 'restore'
-          projects: 'Playwright-dotnet-NUnit-Framework/SpecFlowWithPlaywright.csproj'
-          feedsToUse: 'config'
-          nugetConfigPath: 'nuget.config'
 
-      - task: DotNetCoreCLI@2
+      - script: dotnet build 'Playwright-dotnet-NUnit-Framework/SpecFlowWithPlaywright.csproj' --configuration Release
         displayName: 'Build Projects'
-        inputs:
-          command: 'build'
-          projects: 'Playwright-dotnet-NUnit-Framework/SpecFlowWithPlaywright.csproj'
-          arguments: '--no-restore -c Release /p:Platform=x64 /p:Version=$(Build.BuildNumber)'
 
-      - task: DotNetCoreCLI@2
+      - script: dotnet publish 'Playwright-dotnet-NUnit-Framework/SpecFlowWithPlaywright.csproj' --configuration Release --output $(Build.ArtifactStagingDirectory)
         displayName: 'Publish Test Project'
         condition: succeeded()
-        inputs:
-          command: 'publish'
-          publishWebProjects: false
-          projects: '$(testProject)'
-          arguments: '-c Release -o $(Build.ArtifactStagingDirectory)'
-          zipAfterPublish: false
-          modifyOutputPath: false
-          workingDirectory: '$(build.sourcesDirectory)'
 
       - publish: $(Build.ArtifactStagingDirectory)
         displayName: 'Publish Artifacts'
