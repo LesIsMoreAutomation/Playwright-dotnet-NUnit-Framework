@@ -1,3 +1,7 @@
+schedules:
+- cron: "0 3 * * *"
+  displayName: "Daily pipeline run at 3 AM"
+
 trigger:
 - main
 
