@@ -27,13 +27,13 @@ jobs:
           packageType: 'sdk'
           version: '6.0.x'
 
-      - script: dotnet restore 'Playwright-dotnet-NUnit-Framework/SpecFlowWithPlaywright.csproj'
+      - script: dotnet restore 'SpecFlowWithPlaywright.csproj'
         displayName: 'Restore Packages'
 
-      - script: dotnet build 'Playwright-dotnet-NUnit-Framework/SpecFlowWithPlaywright.csproj' --configuration Release
+      - script: dotnet build 'SpecFlowWithPlaywright.csproj' --configuration Release
         displayName: 'Build Projects'
 
-      - script: dotnet publish 'Playwright-dotnet-NUnit-Framework/SpecFlowWithPlaywright.csproj' --configuration Release --output $(Build.ArtifactStagingDirectory)
+      - script: dotnet publish 'SpecFlowWithPlaywright.csproj' --configuration Release --output $(Build.ArtifactStagingDirectory)
         displayName: 'Publish Test Project'
         condition: succeeded()
 
