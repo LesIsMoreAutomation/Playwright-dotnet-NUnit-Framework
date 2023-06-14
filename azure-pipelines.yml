@@ -13,8 +13,13 @@ steps:
       version: '6.0.x'
     displayName: 'Use .NET SDK'
 
-  - script: dotnet restore
-    displayName: 'Restore NuGet packages'
+  - task: DotNetCoreCLI@2
+    displayName: 'Restore Packages'
+    inputs:
+      command: 'restore'
+      projects: 'tests/tests.csproj'
+      feedsToUse: 'config'
+      nugetConfigPath: 'nuget.config'
 
   - script: dotnet build --configuration Release
     displayName: 'Build'
