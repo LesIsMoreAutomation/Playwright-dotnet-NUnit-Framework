@@ -16,3 +16,24 @@ steps:
   displayName: 'Build'
 - script: dotnet test --configuration Release
   displayName: 'Run tests'
+
+- script: dotnet tool install --global LivingDoc.CLI
+  displayName: 'Install LivingDoc CLI'
+
+- script: livingdoc test-assembly SpecFlowWithPlaywright.dll -t TestExecution.json
+  displayName: 'Generate LivingDoc report'
+
+- task: ArchiveFiles@2
+  inputs:
+    rootFolderOrFile: 'bin/Debug/net6.0/LivingDoc.html'
+    includeRootFolder: false
+    archiveType: 'zip'
+    archiveFile: '$(Build.ArtifactStagingDirectory)/livingdoc-report.zip'
+  displayName: 'Zip LivingDoc report'
+
+- task: PublishPipelineArtifact@1
+  inputs:
+    targetPath: '$(Build.ArtifactStagingDirectory)/livingdoc-report.zip'
+    artifactName: 'livingdoc-report'
+    publishLocation: 'pipeline'
+  displayName: 'Publish LivingDoc report artifact'
