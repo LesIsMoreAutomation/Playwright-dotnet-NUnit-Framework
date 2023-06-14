@@ -34,7 +34,7 @@ jobs:
         displayName: 'Build Projects'
         condition: succeeded()
 
-      - script: pwsh bin/Debug/netX/playwright.ps1 install --with-deps
+      - script: pwsh bin/Debug/net6.0/playwright.ps1 install --with-deps
         displayName: 'Install Playwright browsers'
       
       - script: dotnet test 'SpecFlowWithPlaywright.csproj' --configuration Release --logger trx --results-directory $(Build.ArtifactStagingDirectory)/TestResults
