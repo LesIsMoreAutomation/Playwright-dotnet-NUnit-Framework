@@ -13,17 +13,15 @@ variables:
 
 steps:
 - task: NuGetToolInstaller@1
-#- pwsh: bin/Debug/netX/playwright.ps1 install 
-#- pwsh: bin/Debug/netX/playwright.ps1 install-deps chromium
+
 - pwsh: dotnet --version
   displayName: Retrieve DotNet Version
 - pwsh: dotnet --info
   displayName: Retrieve DotNet Info
 
-- pwsh: bin/Debug/net6.0/playwright.ps1 install 
+- pwsh: dotnet tool install --global playwright-cli@1.14.2
   displayName: Installing Playwright Browser
 
-# Install VSTest 17.5.0
 - task: VisualStudioTestPlatformInstaller@1
   inputs:
     packageFeedSelector: 'nugetOrg'
@@ -33,20 +31,7 @@ steps:
 - task: VSTest@2
   inputs:
     testSelector: 'testAssemblies'
-    # testAssemblyVer2: |
-    #   CommunityAppsRegressionTests.dll
-    # searchFolder: '$(System.DefaultWorkingDirectory)'
-    # ------------  Use the version installed by installer -----------
+    testAssemblyVer2: |
+      bin/Debug/net6.0/SpecFlowWithPlaywright.dll
+    searchFolder: '$(System.DefaultWorkingDirectory)'
     vsTestVersion: 'toolsInstaller'
-
-# - task: VSTest@2
-#   inputs:
-#     platform: '$(buildPlatform)'
-#     configuration: '$(buildConfiguration)'
-
-#- task: VSTest@2
-
-# - pwsh: cd
-#   displayName: Returning CD
-# - pwsh: dotnet test CommunityAppsRegressionTests
-#   displayName: Running Tests
