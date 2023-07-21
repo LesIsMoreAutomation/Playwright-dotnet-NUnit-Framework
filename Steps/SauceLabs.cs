@@ -44,10 +44,10 @@ public sealed class SauceLabs
         await _loginPage.EnterPassword(password);
     }
 
-    [When(@"click on the login button")]
-    public async Task WhenClickOnTheLoginButton()
+    [When(@"click on the ""(.*)"" button")]
+    public async Task WhenClickOnTheLoginButton(string Login)
     {
-        await _loginPage.LoginInButton();
+        await _loginPage.Button(Login);
     }
 
     [Then(@"the user should not login successfully")]

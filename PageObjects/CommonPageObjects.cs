@@ -14,6 +14,11 @@
             await basePage.GoToUrl(p0);
         }
 
+        public async Task EnterInputField(string username,string locator)
+        {
+            await basePage.GetByPlaceholder(locator,username);
+        }
+        
         
     }
 }

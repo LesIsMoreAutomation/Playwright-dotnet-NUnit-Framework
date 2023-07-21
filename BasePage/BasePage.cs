@@ -14,30 +14,7 @@ namespace SpecFlowWithPlaywright.BasePage
             //_microsoftLoginPage = new MicrosoftLoginPage(_page);
         }
 
-
-        public void setLocalStoreKeyValue(string strKey, string strValue,Hooks.Hooks driver)
-        {
-            driver.page.EvaluateAsync(string.Format("localStorage.setItem('{0}', '{1}');", strKey, strValue));
-        }
-
-        public void GetToggles(Hooks.Hooks driver)
-        {
-            setLocalStoreKeyValue("NG_IS_PREPARE_FOR_CREDIT_AND_CAPTURE_AND_VALIDATE", "true",driver);
-            setLocalStoreKeyValue("NG_LENDING","true",driver);
-            setLocalStoreKeyValue("NG_LENDING_CAPTURE", "true",driver);
-            setLocalStoreKeyValue("SHOW_NON_RESIDENTIAL_PRODUCTS", "true",driver);
-            setLocalStoreKeyValue("NG_HIDE_INSTALMENT_FIELDS", "true",driver);
-            setLocalStoreKeyValue("SHOW_LDF_INITIATE", "true",driver);
-            setLocalStoreKeyValue("NG_ENTITY_SEARCH", "true",driver);
-            setLocalStoreKeyValue("SHOW_LDF_BASKET", "true",driver);
-
-            
-
-            
-
-       }
-
-       
+ 
          public async Task GoToUrl(string url)
         {
             await _page.GotoAsync(url,new() { Timeout = 60000 });
@@ -231,11 +208,14 @@ namespace SpecFlowWithPlaywright.BasePage
             await _page.WaitForURLAsync(targetUrl, new() { Timeout = 60000 });
         }
 
-        public async Task ClickByText(string text) =>
-            await _page.ClickAsync("text=" + text, new(){Timeout = 60000 });
+        /*public async Task ClickByText(string text) =>
+            await _page.ClickAsync("text=" + text, new(){Timeout = 60000 });*/
 
-        public async Task ClickByLabel(string text) =>
-            await _page.GetByText("text=" + text).ClickAsync(new() { Timeout = 60000 });
+        public async Task ClickButtonByText(string text) =>
+           await _page.GetByRole(AriaRole.Button, new() { Name = text }).ClickAsync(new() { Timeout = 60000 });
+        
+        public async Task ClickByText(string text) =>
+            await _page.GetByText(text).First.ClickAsync(new() { Timeout = 60000 });
 
         public async Task WaitTimeOut(string selector)
         {

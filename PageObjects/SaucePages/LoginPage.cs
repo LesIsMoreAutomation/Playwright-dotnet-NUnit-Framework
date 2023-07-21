@@ -17,9 +17,9 @@ public class LoginPage
     {
         await basePage.GetByPlaceholder("Password",password);
     }
-    public async Task LoginInButton()
+    public async Task Button(string Login)
     {
-        await basePage.ClickAsync("#login-button");
+        await basePage.ClickButtonByText(Login);
     }
     
     public async Task AssserPage(string locator, string text)
