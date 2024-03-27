@@ -212,7 +212,7 @@ namespace SpecFlowWithPlaywright.BasePage
             await _page.ClickAsync("text=" + text, new(){Timeout = 60000 });*/
 
         public async Task ClickButtonByText(string text) =>
-           await _page.GetByRole(AriaRole.Button, new() { Name = text }).ClickAsync(new() { Timeout = 60000 });
+           await _page.GetByRole(AriaRole.Button, new() { Name = text }).First.ClickAsync(new() { Timeout = 60000 });
         
         public async Task ClickByText(string text) =>
             await _page.GetByText(text).First.ClickAsync(new() { Timeout = 60000 });
