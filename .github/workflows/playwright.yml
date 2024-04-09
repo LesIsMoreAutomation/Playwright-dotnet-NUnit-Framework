@@ -17,13 +17,13 @@ jobs:
       - name: Setup dotnet
         uses: actions/setup-dotnet@v3
         with:
-          dotnet-version: 6.0.x
+          dotnet-version: 7.0.x
 
       - name: Build project
         run: dotnet build
 
       - name: Install browsers
-        run: pwsh bin/Debug/net6.0/playwright.ps1 install --with-deps
+        run: pwsh bin/Debug/net7.0/playwright.ps1 install --with-deps
 
       - name: Run tests
         run: dotnet test
@@ -32,11 +32,11 @@ jobs:
         run: dotnet tool install --global SpecFlow.Plus.LivingDoc.CLI
 
       - name: Generate LivingDoc report
-        working-directory: bin/Debug/net6.0
+        working-directory: bin/Debug/net7.0
         run: livingdoc test-assembly SpecFlowWithPlaywright.dll -t TestExecution.json
 
       - name: Zip LivingDoc HTML artifacts
-        run: zip -r LivingDoc.zip bin/Debug/net6.0/LivingDoc.html
+        run: zip -r LivingDoc.zip bin/Debug/net7.0/LivingDoc.html
 
       - name: Upload LivingDoc HTML artifacts
         uses: actions/upload-artifact@v2
