@@ -67,7 +67,11 @@ function parseLocator(locator, testIdAttributeName) {
   .replace(/\.and_\(/g, 'and(') // Python has "and_" instead of "and".
   .replace(/:/g, '=').replace(/,re\.ignorecase/g, 'i').replace(/,pattern.case_insensitive/g, 'i').replace(/,regexoptions.ignorecase/g, 'i').replace(/re.compile\(([^)]+)\)/g, '$1') // Python has regex strings as r"foo"
   .replace(/pattern.compile\(([^)]+)\)/g, 'r$1').replace(/newregex\(([^)]+)\)/g, 'r$1').replace(/string=/g, '=').replace(/regex=/g, '=').replace(/,,/g, ',');
-  return transform(template, params, testIdAttributeName);
+  const preferredQuote = params.map(p => p.quote).filter(quote => '\'"`'.includes(quote))[0];
+  return {
+    selector: transform(template, params, testIdAttributeName),
+    preferredQuote
+  };
 }
 function countParams(template) {
   return [...template.matchAll(/\$\d+/g)].length;
@@ -77,7 +81,7 @@ function shiftParams(template, sub) {
 }
 function transform(template, params, testIdAttributeName) {
   // Recursively handle filter(has=, hasnot=, sethas(), sethasnot()).
-  // TODO: handle and(locator), or(locator), locator(has=, hasnot=, sethas(), sethasnot()).
+  // TODO: handle and(locator), or(locator), locator(locator), locator(has=, hasnot=, sethas(), sethasnot()).
   while (true) {
     const hasMatch = template.match(/filter\(,?(has=|hasnot=|sethas\(|sethasnot\()/);
     if (!hasMatch) break;
@@ -119,7 +123,7 @@ function transform(template, params, testIdAttributeName) {
   }
 
   // Transform to selector engines.
-  template = template.replace(/\,set([\w]+)\(([^)]+)\)/g, (_, group1, group2) => ',' + group1.toLowerCase() + '=' + group2.toLowerCase()).replace(/framelocator\(([^)]+)\)/g, '$1.internal:control=enter-frame').replace(/locator\(([^)]+),hastext=([^),]+)\)/g, 'locator($1).internal:has-text=$2').replace(/locator\(([^)]+),hasnottext=([^),]+)\)/g, 'locator($1).internal:has-not-text=$2').replace(/locator\(([^)]+),hastext=([^),]+)\)/g, 'locator($1).internal:has-text=$2').replace(/locator\(([^)]+)\)/g, '$1').replace(/getbyrole\(([^)]+)\)/g, 'internal:role=$1').replace(/getbytext\(([^)]+)\)/g, 'internal:text=$1').replace(/getbylabel\(([^)]+)\)/g, 'internal:label=$1').replace(/getbytestid\(([^)]+)\)/g, `internal:testid=[${testIdAttributeName}=$1s]`).replace(/getby(placeholder|alt|title)(?:text)?\(([^)]+)\)/g, 'internal:attr=[$1=$2]').replace(/first(\(\))?/g, 'nth=0').replace(/last(\(\))?/g, 'nth=-1').replace(/nth\(([^)]+)\)/g, 'nth=$1').replace(/filter\(,?hastext=([^)]+)\)/g, 'internal:has-text=$1').replace(/filter\(,?hasnottext=([^)]+)\)/g, 'internal:has-not-text=$1').replace(/filter\(,?has2=([^)]+)\)/g, 'internal:has=$1').replace(/filter\(,?hasnot2=([^)]+)\)/g, 'internal:has-not=$1').replace(/,exact=false/g, '').replace(/,exact=true/g, 's').replace(/\,/g, '][');
+  template = template.replace(/\,set([\w]+)\(([^)]+)\)/g, (_, group1, group2) => ',' + group1.toLowerCase() + '=' + group2.toLowerCase()).replace(/framelocator\(([^)]+)\)/g, '$1.internal:control=enter-frame').replace(/locator\(([^)]+),hastext=([^),]+)\)/g, 'locator($1).internal:has-text=$2').replace(/locator\(([^)]+),hasnottext=([^),]+)\)/g, 'locator($1).internal:has-not-text=$2').replace(/locator\(([^)]+),hastext=([^),]+)\)/g, 'locator($1).internal:has-text=$2').replace(/locator\(([^)]+)\)/g, '$1').replace(/getbyrole\(([^)]+)\)/g, 'internal:role=$1').replace(/getbytext\(([^)]+)\)/g, 'internal:text=$1').replace(/getbylabel\(([^)]+)\)/g, 'internal:label=$1').replace(/getbytestid\(([^)]+)\)/g, `internal:testid=[${testIdAttributeName}=$1]`).replace(/getby(placeholder|alt|title)(?:text)?\(([^)]+)\)/g, 'internal:attr=[$1=$2]').replace(/first(\(\))?/g, 'nth=0').replace(/last(\(\))?/g, 'nth=-1').replace(/nth\(([^)]+)\)/g, 'nth=$1').replace(/filter\(,?hastext=([^)]+)\)/g, 'internal:has-text=$1').replace(/filter\(,?hasnottext=([^)]+)\)/g, 'internal:has-not-text=$1').replace(/filter\(,?has2=([^)]+)\)/g, 'internal:has=$1').replace(/filter\(,?hasnot2=([^)]+)\)/g, 'internal:has-not=$1').replace(/,exact=false/g, '').replace(/,exact=true/g, 's').replace(/\,/g, '][');
   const parts = template.split('.');
   // Turn "internal:control=enter-frame >> nth=0" into "nth=0 >> internal:control=enter-frame"
   // because these are swapped in locators vs selectors.
@@ -140,12 +144,13 @@ function transform(template, params, testIdAttributeName) {
     t = t.includes('[') ? t.replace(/\]/, '') + ']' : t;
     t = t.replace(/(?:r)\$(\d+)(i)?/g, (_, ordinal, suffix) => {
       const param = params[+ordinal - 1];
-      if (t.startsWith('internal:attr') || t.startsWith('internal:testid') || t.startsWith('internal:role')) return new RegExp(param.text) + (suffix || '');
+      if (t.startsWith('internal:attr') || t.startsWith('internal:testid') || t.startsWith('internal:role')) return (0, _stringUtils.escapeForAttributeSelector)(new RegExp(param.text), false) + (suffix || '');
       return (0, _stringUtils.escapeForTextSelector)(new RegExp(param.text, suffix), false);
     }).replace(/\$(\d+)(i|s)?/g, (_, ordinal, suffix) => {
       const param = params[+ordinal - 1];
       if (t.startsWith('internal:has=') || t.startsWith('internal:has-not=')) return param.text;
-      if (t.startsWith('internal:attr') || t.startsWith('internal:testid') || t.startsWith('internal:role')) return (0, _stringUtils.escapeForAttributeSelector)(param.text, suffix === 's');
+      if (t.startsWith('internal:testid')) return (0, _stringUtils.escapeForAttributeSelector)(param.text, true);
+      if (t.startsWith('internal:attr') || t.startsWith('internal:role')) return (0, _stringUtils.escapeForAttributeSelector)(param.text, suffix === 's');
       return (0, _stringUtils.escapeForTextSelector)(param.text, suffix === 's');
     });
     return t;
@@ -157,13 +162,18 @@ function locatorOrSelectorAsSelector(language, locator, testIdAttributeName) {
     return locator;
   } catch (e) {}
   try {
-    const selector = parseLocator(locator, testIdAttributeName);
-    const locators = (0, _locatorGenerators.asLocators)(language, selector);
-    const digest = digestForComparison(locator);
-    if (locators.some(candidate => digestForComparison(candidate) === digest)) return selector;
+    const {
+      selector,
+      preferredQuote
+    } = parseLocator(locator, testIdAttributeName);
+    const locators = (0, _locatorGenerators.asLocators)(language, selector, undefined, undefined, preferredQuote);
+    const digest = digestForComparison(language, locator);
+    if (locators.some(candidate => digestForComparison(language, candidate) === digest)) return selector;
   } catch (e) {}
   return '';
 }
-function digestForComparison(locator) {
-  return locator.replace(/\s/g, '').replace(/["`]/g, '\'');
+function digestForComparison(language, locator) {
+  locator = locator.replace(/\s/g, '');
+  if (language === 'javascript') locator = locator.replace(/\\?["`]/g, '\'');
+  return locator;
 }

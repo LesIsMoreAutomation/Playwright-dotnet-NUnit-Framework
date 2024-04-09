@@ -97,7 +97,7 @@ namespace SpecFlowWithPlaywright.Features.SauceLabs
         testRunner.When("I login with a valid \"standard_user\" and \"secret_sauce\"", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");
 #line hidden
 #line 8
-        testRunner.And("click on the login button", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "And ");
+        testRunner.And("click on the \"Login\" button", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "And ");
 #line hidden
 #line 9
         testRunner.Then("the user should be successfully logged in", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");

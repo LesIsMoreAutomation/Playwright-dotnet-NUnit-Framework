@@ -25,8 +25,8 @@ var _recorder = require("./recorder");
 var consoleApiSource = _interopRequireWildcard(require("../generated/consoleApiSource"));
 var _fetch = require("./fetch");
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
-function _getRequireWildcardCache(nodeInterop) { if (typeof WeakMap !== "function") return null; var cacheBabelInterop = new WeakMap(); var cacheNodeInterop = new WeakMap(); return (_getRequireWildcardCache = function (nodeInterop) { return nodeInterop ? cacheNodeInterop : cacheBabelInterop; })(nodeInterop); }
-function _interopRequireWildcard(obj, nodeInterop) { if (!nodeInterop && obj && obj.__esModule) { return obj; } if (obj === null || typeof obj !== "object" && typeof obj !== "function") { return { default: obj }; } var cache = _getRequireWildcardCache(nodeInterop); if (cache && cache.has(obj)) { return cache.get(obj); } var newObj = {}; var hasPropertyDescriptor = Object.defineProperty && Object.getOwnPropertyDescriptor; for (var key in obj) { if (key !== "default" && Object.prototype.hasOwnProperty.call(obj, key)) { var desc = hasPropertyDescriptor ? Object.getOwnPropertyDescriptor(obj, key) : null; if (desc && (desc.get || desc.set)) { Object.defineProperty(newObj, key, desc); } else { newObj[key] = obj[key]; } } } newObj.default = obj; if (cache) { cache.set(obj, newObj); } return newObj; }
+function _getRequireWildcardCache(e) { if ("function" != typeof WeakMap) return null; var r = new WeakMap(), t = new WeakMap(); return (_getRequireWildcardCache = function (e) { return e ? t : r; })(e); }
+function _interopRequireWildcard(e, r) { if (!r && e && e.__esModule) return e; if (null === e || "object" != typeof e && "function" != typeof e) return { default: e }; var t = _getRequireWildcardCache(r); if (t && t.has(e)) return t.get(e); var n = { __proto__: null }, a = Object.defineProperty && Object.getOwnPropertyDescriptor; for (var u in e) if ("default" !== u && Object.prototype.hasOwnProperty.call(e, u)) { var i = a ? Object.getOwnPropertyDescriptor(e, u) : null; i && (i.get || i.set) ? Object.defineProperty(n, u, i) : n[u] = e[u]; } return n.default = e, t && t.set(e, n), n; }
 /**
  * Copyright 2017 Google Inc. All rights reserved.
  * Modifications copyright (c) Microsoft Corporation.
@@ -71,6 +71,7 @@ class BrowserContext extends _instrumentation.SdkObject {
     this.initScripts = [];
     this._routesInFlight = new Set();
     this._debugger = void 0;
+    this._closeReason = void 0;
     this.attribution.context = this;
     this._browser = browser;
     this._options = options;
@@ -88,10 +89,10 @@ class BrowserContext extends _instrumentation.SdkObject {
     this._selectors = selectors;
   }
   selectors() {
-    return this._selectors || this._browser.options.selectors;
+    return this._selectors || this.attribution.playwright.selectors;
   }
   async _initialize() {
-    if (this.attribution.isInternalPlaywright) return;
+    if (this.attribution.playwright.options.isInternalPlaywright) return;
     // Debugger will pause execution upon page.pause in headed mode.
     this._debugger = new _debugger.Debugger(this);
 
@@ -119,8 +120,12 @@ class BrowserContext extends _instrumentation.SdkObject {
     if (this._closedStatus !== 'open') return false;
     return true;
   }
-  async stopPendingOperations() {
-    for (const controller of this._activeProgressControllers) controller.abort(new Error(`Context was reset for reuse.`));
+  async stopPendingOperations(reason) {
+    // When using context reuse, stop pending operations to gracefully terminate all the actions
+    // with a user-friendly error message containing operation log.
+    for (const controller of this._activeProgressControllers) controller.abort(new Error(reason));
+    // Let rejections in microtask generate events before returning.
+    await new Promise(f => setTimeout(f, 0));
   }
   static reusableContextHash(params) {
     const paramsCopy = {
@@ -147,19 +152,19 @@ class BrowserContext extends _instrumentation.SdkObject {
     let page = this.pages()[0];
     const [, ...otherPages] = this.pages();
     for (const p of otherPages) await p.close(metadata);
-    if (page && page._crashedPromise.isDone()) {
+    if (page && page.hasCrashed()) {
       await page.close(metadata);
       page = undefined;
     }
 
     // Unless dialogs are dismissed, setting extra http headers below does not respond.
-    (_page = page) === null || _page === void 0 ? void 0 : _page._frameManager.setCloseAllOpeningDialogs(true);
+    (_page = page) === null || _page === void 0 || _page._frameManager.setCloseAllOpeningDialogs(true);
     await ((_page2 = page) === null || _page2 === void 0 ? void 0 : _page2._frameManager.closeOpenDialogs());
     // Navigate to about:blank first to ensure no page scripts are running after this point.
     await ((_page3 = page) === null || _page3 === void 0 ? void 0 : _page3.mainFrame().goto(metadata, 'about:blank', {
       timeout: 0
     }));
-    (_page4 = page) === null || _page4 === void 0 ? void 0 : _page4._frameManager.setCloseAllOpeningDialogs(false);
+    (_page4 = page) === null || _page4 === void 0 || _page4._frameManager.setCloseAllOpeningDialogs(false);
     await this._resetStorage();
     await this._removeExposedBindings();
     await this._removeInitScripts();
@@ -183,10 +188,7 @@ class BrowserContext extends _instrumentation.SdkObject {
       // at the same time.
       return;
     }
-    this._closedStatus = 'closed';
-    this._deleteAllDownloads();
-    this._downloads.clear();
-    this.tracing.dispose().catch(() => {});
+    this.tracing.abort();
     if (this._isPersistentContext) this.onClosePersistent();
     this._closePromiseFulfill(new Error('Context closed'));
     this.emit(BrowserContext.Events.Close);
@@ -316,12 +318,13 @@ class BrowserContext extends _instrumentation.SdkObject {
   setCustomCloseHandler(handler) {
     this._customCloseHandler = handler;
   }
-  async close(metadata) {
+  async close(options) {
     if (this._closedStatus === 'open') {
+      if (options.reason) this._closeReason = options.reason;
       this.emit(BrowserContext.Events.BeforeClose);
       this._closedStatus = 'closing';
       for (const harRecorder of this._harRecorders.values()) await harRecorder.flush();
-      await this.tracing.dispose();
+      await this.tracing.flush();
 
       // Cleanup.
       const promises = [];
@@ -336,7 +339,7 @@ class BrowserContext extends _instrumentation.SdkObject {
         await this._customCloseHandler();
       } else {
         // Close the context.
-        await this.doClose();
+        await this.doClose(options.reason);
       }
 
       // We delete downloads after context closure
@@ -387,7 +390,9 @@ class BrowserContext extends _instrumentation.SdkObject {
         await frame.goto(internalMetadata, origin);
         const storage = await frame.evaluateExpression(`({
           localStorage: Object.keys(localStorage).map(name => ({ name, value: localStorage.getItem(name) })),
-        })`, false, undefined, 'utility');
+        })`, {
+          world: 'utility'
+        });
         originStorage.localStorage = storage.localStorage;
         if (storage.localStorage.length) result.origins.push(originStorage);
       }
@@ -396,13 +401,18 @@ class BrowserContext extends _instrumentation.SdkObject {
     return result;
   }
   async _resetStorage() {
-    var _this$_options$storag, _this$_options$storag2;
+    var _this$_options$storag;
     const oldOrigins = this._origins;
-    const newOrigins = new Map(((_this$_options$storag = this._options.storageState) === null || _this$_options$storag === void 0 ? void 0 : (_this$_options$storag2 = _this$_options$storag.origins) === null || _this$_options$storag2 === void 0 ? void 0 : _this$_options$storag2.map(p => [p.origin, p])) || []);
+    const newOrigins = new Map(((_this$_options$storag = this._options.storageState) === null || _this$_options$storag === void 0 || (_this$_options$storag = _this$_options$storag.origins) === null || _this$_options$storag === void 0 ? void 0 : _this$_options$storag.map(p => [p.origin, p])) || []);
     if (!oldOrigins.size && !newOrigins.size) return;
     let page = this.pages()[0];
     const internalMetadata = (0, _instrumentation.serverSideCallMetadata)();
-    page = page || (await this.newPage(internalMetadata));
+    page = page || (await this.newPage({
+      ...internalMetadata,
+      // Do not mark this page as internal, because we will leave it for later reuse
+      // as a user-visible page.
+      isServerSide: false
+    }));
     await page._setServerRequestInterceptor(handler => {
       handler.fulfill({
         body: '<html></html>',
@@ -419,11 +429,10 @@ class BrowserContext extends _instrumentation.SdkObject {
     this._origins = new Set([...newOrigins.keys()]);
     // It is safe to not restore the URL to about:blank since we are doing it in Page::resetForReuse.
   }
-
   async _resetCookies() {
-    var _this$_options$storag3, _this$_options$storag4;
+    var _this$_options$storag2, _this$_options$storag3;
     await this.clearCookies();
-    if ((_this$_options$storag3 = this._options.storageState) !== null && _this$_options$storag3 !== void 0 && _this$_options$storag3.cookies) await this.addCookies((_this$_options$storag4 = this._options.storageState) === null || _this$_options$storag4 === void 0 ? void 0 : _this$_options$storag4.cookies);
+    if ((_this$_options$storag2 = this._options.storageState) !== null && _this$_options$storag2 !== void 0 && _this$_options$storag2.cookies) await this.addCookies((_this$_options$storag3 = this._options.storageState) === null || _this$_options$storag3 === void 0 ? void 0 : _this$_options$storag3.cookies);
   }
   isSettingStorageState() {
     return this._settingStorageState;
@@ -449,7 +458,10 @@ class BrowserContext extends _instrumentation.SdkObject {
             originState => {
               for (const { name, value } of (originState.localStorage || []))
                 localStorage.setItem(name, value);
-            }`, true, originState, 'utility');
+            }`, {
+            isFunction: true,
+            world: 'utility'
+          }, originState);
         }
         await page.close(internalMetadata);
       }
@@ -492,10 +504,16 @@ BrowserContext.Events = {
   Close: 'close',
   Dialog: 'dialog',
   Page: 'page',
+  // Can't use just 'error' due to node.js special treatment of error events.
+  // @see https://nodejs.org/api/events.html#events_error_events
+  PageError: 'pageerror',
   Request: 'request',
   Response: 'response',
   RequestFailed: 'requestfailed',
   RequestFinished: 'requestfinished',
+  RequestAborted: 'requestaborted',
+  RequestFulfilled: 'requestfulfilled',
+  RequestContinued: 'requestcontinued',
   BeforeClose: 'beforeclose',
   VideoStarted: 'videostarted'
 };
@@ -507,7 +525,7 @@ function assertBrowserContextIsNotOwned(context) {
 function validateBrowserContextOptions(options, browserOptions) {
   if (options.noDefaultViewport && options.deviceScaleFactor !== undefined) throw new Error(`"deviceScaleFactor" option is not supported with null "viewport"`);
   if (options.noDefaultViewport && !!options.isMobile) throw new Error(`"isMobile" option is not supported with null "viewport"`);
-  if (options.acceptDownloads === undefined) options.acceptDownloads = true;
+  if (options.acceptDownloads === undefined) options.acceptDownloads = 'accept';
   if (!options.viewport && !options.noDefaultViewport) options.viewport = {
     width: 1280,
     height: 720
@@ -584,7 +602,7 @@ const defaultNewContextParamValues = {
   offline: false,
   isMobile: false,
   hasTouch: false,
-  acceptDownloads: true,
+  acceptDownloads: 'accept',
   strictSelectors: false,
   serviceWorkers: 'allow',
   locale: 'en-US'

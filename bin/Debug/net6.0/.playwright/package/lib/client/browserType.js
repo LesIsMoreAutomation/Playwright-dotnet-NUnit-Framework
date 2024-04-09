@@ -11,7 +11,6 @@ var _connection = require("./connection");
 var _events = require("./events");
 var _clientHelper = require("./clientHelper");
 var _utils = require("../utils");
-var _errors = require("../common/errors");
 var _timeoutRunner = require("../utils/timeoutRunner");
 /**
  * Copyright (c) Microsoft Corporation.
@@ -42,7 +41,6 @@ class BrowserType extends _channelOwner.ChannelOwner {
     this._defaultContextTimeout = void 0;
     this._defaultContextNavigationTimeout = void 0;
     this._defaultLaunchOptions = void 0;
-    this._defaultConnectOptions = void 0;
   }
   static from(browserType) {
     return browserType._object;
@@ -58,7 +56,6 @@ class BrowserType extends _channelOwner.ChannelOwner {
     var _this$_defaultLaunchO;
     (0, _utils.assert)(!options.userDataDir, 'userDataDir option is not supported in `browserType.launch`. Use `browserType.launchPersistentContext` instead');
     (0, _utils.assert)(!options.port, 'Cannot specify a port without launching as a server.');
-    if (this._defaultConnectOptions) return await this._connectInsteadOfLaunching(this._defaultConnectOptions, options);
     const logger = options.logger || ((_this$_defaultLaunchO = this._defaultLaunchOptions) === null || _this$_defaultLaunchO === void 0 ? void 0 : _this$_defaultLaunchO.logger);
     options = {
       ...this._defaultLaunchOptions,
@@ -76,30 +73,13 @@ class BrowserType extends _channelOwner.ChannelOwner {
       return browser;
     });
   }
-  async _connectInsteadOfLaunching(connectOptions, launchOptions) {
-    var _connectOptions$timeo;
-    return this._connect({
-      wsEndpoint: connectOptions.wsEndpoint,
-      headers: {
-        'x-playwright-launch-options': JSON.stringify({
-          ...this._defaultLaunchOptions,
-          ...launchOptions
-        }),
-        ...connectOptions.headers
-      },
-      _exposeNetwork: connectOptions._exposeNetwork,
-      slowMo: connectOptions.slowMo,
-      timeout: (_connectOptions$timeo = connectOptions.timeout) !== null && _connectOptions$timeo !== void 0 ? _connectOptions$timeo : 3 * 60 * 1000 // 3 minutes
-    });
-  }
-
   async launchServer(options = {}) {
     if (!this._serverLauncher) throw new Error('Launching server is not supported');
     options = {
       ...this._defaultLaunchOptions,
       ...options
     };
-    return this._serverLauncher.launchServer(options);
+    return await this._serverLauncher.launchServer(options);
   }
   async launchPersistentContext(userDataDir, options = {}) {
     var _this$_defaultLaunchO2;
@@ -127,16 +107,17 @@ class BrowserType extends _channelOwner.ChannelOwner {
     });
   }
   async connect(optionsOrWsEndpoint, options) {
-    if (typeof optionsOrWsEndpoint === 'string') return this._connect({
+    if (typeof optionsOrWsEndpoint === 'string') return await this._connect({
       ...options,
       wsEndpoint: optionsOrWsEndpoint
     });
     (0, _utils.assert)(optionsOrWsEndpoint.wsEndpoint, 'options.wsEndpoint is required');
-    return this._connect(optionsOrWsEndpoint);
+    return await this._connect(optionsOrWsEndpoint);
   }
   async _connect(params) {
     const logger = params.logger;
     return await this._wrapApiCall(async () => {
+      var _params$exposeNetwork;
       const deadline = params.timeout ? (0, _utils.monotonicTime)() + params.timeout : 0;
       const headers = {
         'x-playwright-browser': this.name(),
@@ -146,7 +127,7 @@ class BrowserType extends _channelOwner.ChannelOwner {
       const connectParams = {
         wsEndpoint: params.wsEndpoint,
         headers,
-        exposeNetwork: params._exposeNetwork,
+        exposeNetwork: (_params$exposeNetwork = params.exposeNetwork) !== null && _params$exposeNetwork !== void 0 ? _params$exposeNetwork : params._exposeNetwork,
         slowMo: params.slowMo,
         timeout: params.timeout
       };
@@ -156,7 +137,7 @@ class BrowserType extends _channelOwner.ChannelOwner {
         headers: connectHeaders
       } = await localUtils._channel.connect(connectParams);
       const closePipe = () => pipe.close().catch(() => {});
-      const connection = new _connection.Connection(localUtils);
+      const connection = new _connection.Connection(localUtils, this._instrumentation);
       connection.markAsRemote();
       connection.on('close', closePipe);
       let browser;
@@ -169,8 +150,8 @@ class BrowserType extends _channelOwner.ChannelOwner {
           for (const page of context.pages()) page._onClose();
           context._onClose();
         }
-        (_browser2 = browser) === null || _browser2 === void 0 ? void 0 : _browser2._didClose();
-        connection.close(closeError || _errors.kBrowserClosedError);
+        (_browser2 = browser) === null || _browser2 === void 0 || _browser2._didClose();
+        connection.close(closeError);
       };
       pipe.on('closed', onPipeClosed);
       connection.onmessage = message => pipe.send({
@@ -182,11 +163,11 @@ class BrowserType extends _channelOwner.ChannelOwner {
         try {
           connection.dispatch(message);
         } catch (e) {
-          closeError = e.toString();
+          closeError = e;
           closePipe();
         }
       });
-      const result = await (0, _timeoutRunner.raceAgainstTimeout)(async () => {
+      const result = await (0, _timeoutRunner.raceAgainstDeadline)(async () => {
         // For tests.
         if (params.__testHookBeforeCreateBrowser) await params.__testHookBeforeCreateBrowser();
         const playwright = await connection.initializePlaywright();
@@ -201,7 +182,7 @@ class BrowserType extends _channelOwner.ChannelOwner {
         browser._connectHeaders = connectHeaders;
         browser.on(_events.Events.Browser.Disconnected, closePipe);
         return browser;
-      }, deadline ? deadline - (0, _utils.monotonicTime)() : 0);
+      }, deadline);
       if (!result.timedOut) {
         return result.result;
       } else {
@@ -210,11 +191,11 @@ class BrowserType extends _channelOwner.ChannelOwner {
       }
     });
   }
-  connectOverCDP(endpointURLOrOptions, options) {
-    if (typeof endpointURLOrOptions === 'string') return this._connectOverCDP(endpointURLOrOptions, options);
+  async connectOverCDP(endpointURLOrOptions, options) {
+    if (typeof endpointURLOrOptions === 'string') return await this._connectOverCDP(endpointURLOrOptions, options);
     const endpointURL = 'endpointURL' in endpointURLOrOptions ? endpointURLOrOptions.endpointURL : endpointURLOrOptions.wsEndpoint;
     (0, _utils.assert)(endpointURL, 'Cannot connect over CDP without wsEndpoint.');
-    return this.connectOverCDP(endpointURL, endpointURLOrOptions);
+    return await this.connectOverCDP(endpointURL, endpointURLOrOptions);
   }
   async _connectOverCDP(endpointURL, params = {}) {
     if (this.name() !== 'chromium') throw new Error('Connecting over CDP is only supported in Chromium.');
@@ -227,7 +208,7 @@ class BrowserType extends _channelOwner.ChannelOwner {
     });
     const browser = _browser3.Browser.from(result.browser);
     this._didLaunchBrowser(browser, {}, params.logger);
-    if (result.defaultContext) await this._didCreateContext(_browserContext.BrowserContext.from(result.defaultContext), {}, {}, undefined);
+    if (result.defaultContext) await this._didCreateContext(_browserContext.BrowserContext.from(result.defaultContext), {}, {}, params.logger);
     return browser;
   }
   _didLaunchBrowser(browser, browserOptions, logger) {

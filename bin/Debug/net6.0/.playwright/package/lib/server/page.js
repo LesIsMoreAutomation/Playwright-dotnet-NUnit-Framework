@@ -17,13 +17,15 @@ var _fileChooser = require("./fileChooser");
 var _progress = require("./progress");
 var _utils = require("../utils");
 var _manualPromise = require("../utils/manualPromise");
-var _debugLogger = require("../common/debugLogger");
+var _debugLogger = require("../utils/debugLogger");
 var _comparators = require("../utils/comparators");
 var _instrumentation = require("./instrumentation");
 var _selectorParser = require("../utils/isomorphic/selectorParser");
 var _utilityScriptSerializers = require("./isomorphic/utilityScriptSerializers");
-function _getRequireWildcardCache(nodeInterop) { if (typeof WeakMap !== "function") return null; var cacheBabelInterop = new WeakMap(); var cacheNodeInterop = new WeakMap(); return (_getRequireWildcardCache = function (nodeInterop) { return nodeInterop ? cacheNodeInterop : cacheBabelInterop; })(nodeInterop); }
-function _interopRequireWildcard(obj, nodeInterop) { if (!nodeInterop && obj && obj.__esModule) { return obj; } if (obj === null || typeof obj !== "object" && typeof obj !== "function") { return { default: obj }; } var cache = _getRequireWildcardCache(nodeInterop); if (cache && cache.has(obj)) { return cache.get(obj); } var newObj = {}; var hasPropertyDescriptor = Object.defineProperty && Object.getOwnPropertyDescriptor; for (var key in obj) { if (key !== "default" && Object.prototype.hasOwnProperty.call(obj, key)) { var desc = hasPropertyDescriptor ? Object.getOwnPropertyDescriptor(obj, key) : null; if (desc && (desc.get || desc.set)) { Object.defineProperty(newObj, key, desc); } else { newObj[key] = obj[key]; } } } newObj.default = obj; if (cache) { cache.set(obj, newObj); } return newObj; }
+var _errors = require("./errors");
+var _locatorGenerators = require("../utils/isomorphic/locatorGenerators");
+function _getRequireWildcardCache(e) { if ("function" != typeof WeakMap) return null; var r = new WeakMap(), t = new WeakMap(); return (_getRequireWildcardCache = function (e) { return e ? t : r; })(e); }
+function _interopRequireWildcard(e, r) { if (!r && e && e.__esModule) return e; if (null === e || "object" != typeof e && "function" != typeof e) return { default: e }; var t = _getRequireWildcardCache(r); if (t && t.has(e)) return t.get(e); var n = { __proto__: null }, a = Object.defineProperty && Object.getOwnPropertyDescriptor; for (var u in e) if ("default" !== u && Object.prototype.hasOwnProperty.call(e, u)) { var i = a ? Object.getOwnPropertyDescriptor(e, u) : null; i && (i.get || i.set) ? Object.defineProperty(n, u, i) : n[u] = e[u]; } return n.default = e, t && t.set(e, n), n; }
 /**
  * Copyright 2017 Google Inc. All rights reserved.
  * Modifications copyright (c) Microsoft Corporation.
@@ -42,17 +44,14 @@ function _interopRequireWildcard(obj, nodeInterop) { if (!nodeInterop && obj && 
  */
 
 class Page extends _instrumentation.SdkObject {
-  // Aiming at 25 fps by default - each frame is 40ms, but we give some slack with 35ms.
-  // When throttling for tracing, 200ms between frames, except for 10 frames around the action.
   constructor(delegate, browserContext) {
     super(browserContext, 'page');
     this._closedState = 'open';
     this._closedPromise = new _manualPromise.ManualPromise();
-    this._disconnected = false;
     this._initialized = false;
     this._eventsToEmitAfterInitialized = [];
-    this._disconnectedPromise = new _manualPromise.ManualPromise();
-    this._crashedPromise = new _manualPromise.ManualPromise();
+    this._crashed = false;
+    this.openScope = new _utils.LongStandingScope();
     this._browserContext = void 0;
     this.keyboard = void 0;
     this.mouse = void 0;
@@ -78,7 +77,13 @@ class Page extends _instrumentation.SdkObject {
     this._video = null;
     this._opener = void 0;
     this._isServerSideOnly = false;
+    this._locatorHandlers = new Map();
+    this._lastLocatorHandlerUid = 0;
+    this._locatorHandlerRunningCounter = 0;
+    // Aiming at 25 fps by default - each frame is 40ms, but we give some slack with 35ms.
+    // When throttling for tracing, 200ms between frames, except for 10 frames around the action.
     this._frameThrottler = new FrameThrottler(10, 35, 200);
+    this._closeReason = void 0;
     this.attribution.page = this;
     this._delegate = delegate;
     this._browserContext = browserContext;
@@ -138,6 +143,7 @@ class Page extends _instrumentation.SdkObject {
   async resetForReuse(metadata) {
     this.setDefaultNavigationTimeout(undefined);
     this.setDefaultTimeout(undefined);
+    this._locatorHandlers.clear();
     await this._removeExposedBindings();
     await this._removeInitScripts();
     await this.setClientRequestInterceptor(undefined);
@@ -160,20 +166,15 @@ class Page extends _instrumentation.SdkObject {
     this.emit(Page.Events.Close);
     this._closedPromise.resolve();
     this.instrumentation.onPageClose(this);
+    this.openScope.close(new _errors.TargetClosedError());
   }
   _didCrash() {
     this._frameManager.dispose();
     this._frameThrottler.dispose();
     this.emit(Page.Events.Crash);
-    this._crashedPromise.resolve(new Error('Page crashed'));
+    this._crashed = true;
     this.instrumentation.onPageClose(this);
-  }
-  _didDisconnect() {
-    this._frameManager.dispose();
-    this._frameThrottler.dispose();
-    (0, _utils.assert)(!this._disconnected, 'Page disconnected twice');
-    this._disconnected = true;
-    this._disconnectedPromise.resolve(new Error('Page closed'));
+    this.openScope.close(new Error('Page crashed'));
   }
   async _onFileChooserOpened(handle) {
     let multiple;
@@ -229,7 +230,7 @@ class Page extends _instrumentation.SdkObject {
     return this._extraHTTPHeaders;
   }
   async _onBindingCalled(payload, context) {
-    if (this._disconnected || this._closedState === 'closed') return;
+    if (this._closedState === 'closed') return;
     await PageBinding.dispatch(this, payload, context);
   }
   _addConsoleMessage(type, args, location, text) {
@@ -285,6 +286,43 @@ class Page extends _instrumentation.SdkObject {
       if (error) throw error;
       return response;
     }), this._timeoutSettings.navigationTimeout(options));
+  }
+  registerLocatorHandler(selector) {
+    const uid = ++this._lastLocatorHandlerUid;
+    this._locatorHandlers.set(uid, {
+      selector
+    });
+    return uid;
+  }
+  resolveLocatorHandler(uid) {
+    const handler = this._locatorHandlers.get(uid);
+    if (handler) {
+      var _handler$resolved;
+      (_handler$resolved = handler.resolved) === null || _handler$resolved === void 0 || _handler$resolved.resolve();
+      handler.resolved = undefined;
+    }
+  }
+  async performLocatorHandlersCheckpoint(progress) {
+    // Do not run locator handlers from inside locator handler callbacks to avoid deadlocks.
+    if (this._locatorHandlerRunningCounter) return;
+    for (const [uid, handler] of this._locatorHandlers) {
+      if (!handler.resolved) {
+        if (await this.mainFrame().isVisibleInternal(handler.selector, {
+          strict: true
+        })) {
+          handler.resolved = new _manualPromise.ManualPromise();
+          this.emit(Page.Events.LocatorHandlerTriggered, uid);
+        }
+      }
+      if (handler.resolved) {
+        ++this._locatorHandlerRunningCounter;
+        progress.log(`  found ${(0, _locatorGenerators.asLocator)(this.attribution.playwright.options.sdkLanguage, handler.selector)}, intercepting action to run the handler`);
+        await this.openScope.race(handler.resolved).finally(() => --this._locatorHandlerRunningCounter);
+        // Avoid side-effects after long-running operation.
+        progress.throwIfAborted();
+        progress.log(`  interception handler has finished, continuing`);
+      }
+    }
   }
   async emulateMedia(options) {
     if (options.media !== undefined) this._emulatedMedia.media = options.media;
@@ -351,10 +389,11 @@ class Page extends _instrumentation.SdkObject {
   async expectScreenshot(metadata, options = {}) {
     const locator = options.locator;
     const rafrafScreenshot = locator ? async (progress, timeout) => {
-      return await locator.frame.rafrafTimeoutScreenshotElementWithProgress(progress, locator.selector, timeout, options.screenshotOptions || {});
+      return await locator.frame.rafrafTimeoutScreenshotElementWithProgress(progress, locator.selector, timeout, options || {});
     } : async (progress, timeout) => {
+      await this.performLocatorHandlersCheckpoint(progress);
       await this.mainFrame().rafrafTimeout(timeout);
-      return await this._screenshotter.screenshotPage(progress, options.screenshotOptions || {});
+      return await this._screenshotter.screenshotPage(progress, options || {});
     };
     const comparator = (0, _comparators.getComparator)('image/png');
     const controller = new _progress.ProgressController(metadata, this);
@@ -362,7 +401,7 @@ class Page extends _instrumentation.SdkObject {
       errorMessage: '"not" matcher requires expected result'
     };
     try {
-      const format = (0, _screenshotter.validateScreenshotOptions)(options.screenshotOptions || {});
+      const format = (0, _screenshotter.validateScreenshotOptions)(options || {});
       if (format !== 'png') throw new Error('Only PNG screenshots are supported');
     } catch (error) {
       return {
@@ -371,7 +410,7 @@ class Page extends _instrumentation.SdkObject {
     }
     let intermediateResult = undefined;
     const areEqualScreenshots = (actual, expected, previous) => {
-      const comparatorResult = actual && expected ? comparator(actual, expected, options.comparatorOptions) : undefined;
+      const comparatorResult = actual && expected ? comparator(actual, expected, options) : undefined;
       if (comparatorResult !== undefined && !!comparatorResult === !!options.isNot) return true;
       if (comparatorResult) intermediateResult = {
         errorMessage: comparatorResult.errorMessage,
@@ -435,18 +474,18 @@ class Page extends _instrumentation.SdkObject {
     const controller = new _progress.ProgressController(metadata, this);
     return controller.run(progress => this._screenshotter.screenshotPage(progress, options), this._timeoutSettings.timeout(options));
   }
-  async close(metadata, options) {
+  async close(metadata, options = {}) {
     if (this._closedState === 'closed') return;
-    const runBeforeUnload = !!options && !!options.runBeforeUnload;
+    if (options.reason) this._closeReason = options.reason;
+    const runBeforeUnload = !!options.runBeforeUnload;
     if (this._closedState !== 'closing') {
       this._closedState = 'closing';
-      (0, _utils.assert)(!this._disconnected, 'Target closed');
       // This might throw if the browser context containing the page closes
       // while we are trying to close the page.
       await this._delegate.closePage(runBeforeUnload).catch(e => _debugLogger.debugLogger.log('error', e));
     }
     if (!runBeforeUnload) await this._closedPromise;
-    if (this._ownedContext) await this._ownedContext.close(metadata);
+    if (this._ownedContext) await this._ownedContext.close(options);
   }
   _setIsError(error) {
     this._pageIsError = error;
@@ -455,8 +494,11 @@ class Page extends _instrumentation.SdkObject {
   isClosed() {
     return this._closedState === 'closed';
   }
+  hasCrashed() {
+    return this._crashed;
+  }
   isClosedOrClosingOrCrashed() {
-    return this._closedState !== 'open' || this._crashedPromise.isDone();
+    return this._closedState !== 'open' || this._crashed;
   }
   _addWorker(workerId, worker) {
     this._workers.set(workerId, worker);
@@ -502,11 +544,8 @@ class Page extends _instrumentation.SdkObject {
     // Don't ack immediately, tracing has smart throttling logic that is implemented here.
     this._frameThrottler.ack(ack);
   }
-  temporarlyDisableTracingScreencastThrottling() {
+  temporarilyDisableTracingScreencastThrottling() {
     this._frameThrottler.recharge();
-  }
-  firePageError(error) {
-    this.emit(Page.Events.PageError, error);
   }
   async hideHighlight() {
     await Promise.all(this.frames().map(frame => frame.hideHighlight().catch(() => {})));
@@ -521,12 +560,10 @@ Page.Events = {
   Crash: 'crash',
   Download: 'download',
   FileChooser: 'filechooser',
-  // Can't use just 'error' due to node.js special treatment of error events.
-  // @see https://nodejs.org/api/events.html#events_error_events
-  PageError: 'pageerror',
   FrameAttached: 'frameattached',
   FrameDetached: 'framedetached',
   InternalFrameNavigatedToNewDocument: 'internalframenavigatedtonewdocument',
+  LocatorHandlerTriggered: 'locatorhandlertriggered',
   ScreencastFrame: 'screencastframe',
   Video: 'video',
   WebSocket: 'websocket',
@@ -539,6 +576,7 @@ class Worker extends _instrumentation.SdkObject {
     this._executionContextPromise = void 0;
     this._executionContextCallback = void 0;
     this._existingExecutionContext = null;
+    this.openScope = new _utils.LongStandingScope();
     this._url = url;
     this._executionContextCallback = () => {};
     this._executionContextPromise = new Promise(x => this._executionContextCallback = x);
@@ -551,8 +589,9 @@ class Worker extends _instrumentation.SdkObject {
     return this._url;
   }
   didClose() {
-    if (this._existingExecutionContext) this._existingExecutionContext.contextDestroyed(new Error('Worker was closed'));
+    if (this._existingExecutionContext) this._existingExecutionContext.contextDestroyed('Worker was closed');
     this.emit(Worker.Events.Close, this);
+    this.openScope.close(new Error('Worker closed'));
   }
   async evaluateExpression(expression, isFunction, arg) {
     return js.evaluateExpression(await this._executionContextPromise, expression, {

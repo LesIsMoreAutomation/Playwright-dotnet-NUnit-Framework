@@ -27,7 +27,7 @@ public class ProductsPage
         for (int i = 0; i < trimmedPrices.Count - 1; i++)
         {
             Console.WriteLine(trimmedPrices[i]);
-            Assert.LessOrEqual(trimmedPrices[i], trimmedPrices[i + 1], $"Price at index {i} is not less than or equal to the price at index {i + 1}.");
+            Assert.That(trimmedPrices[i], Is.LessThanOrEqualTo(trimmedPrices[i + 1]) , $"Price at index {i} is not less than or equal to the price at index {i + 1}.");
         }
     }
 

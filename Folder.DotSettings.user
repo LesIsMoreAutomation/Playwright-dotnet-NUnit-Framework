@@ -42,6 +42,7 @@
     &lt;TestAncestor&gt;&#xD;
       &lt;TestId&gt;NUnit3x::FB57565F-FF2E-4CDD-2262-4743DB411F0A::net6.0::SpecFlowWithPlaywright.Features.SauceLabs.CartFeature&lt;/TestId&gt;&#xD;
       &lt;TestId&gt;NUnit3x::FB57565F-FF2E-4CDD-2262-4743DB411F0A::net6.0::SpecFlowWithPlaywright.Features.SauceLabs.LoginFeature&lt;/TestId&gt;&#xD;
+      &lt;TestId&gt;NUnit3x::FB57565F-FF2E-4CDD-2262-4743DB411F0A::net6.0::SpecFlowWithPlaywright.Features.MicrosoftOffice.Office_LoginFeature&lt;/TestId&gt;&#xD;
     &lt;/TestAncestor&gt;&#xD;
   &lt;/Or&gt;&#xD;
 &lt;/SessionState&gt;</s:String></wpf:ResourceDictionary>

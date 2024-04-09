@@ -102,6 +102,17 @@ Object.keys(_headers).forEach(function (key) {
     }
   });
 });
+var _hostPlatform = require("./hostPlatform");
+Object.keys(_hostPlatform).forEach(function (key) {
+  if (key === "default" || key === "__esModule") return;
+  if (key in exports && exports[key] === _hostPlatform[key]) return;
+  Object.defineProperty(exports, key, {
+    enumerable: true,
+    get: function () {
+      return _hostPlatform[key];
+    }
+  });
+});
 var _httpServer = require("./httpServer");
 Object.keys(_httpServer).forEach(function (key) {
   if (key === "default" || key === "__esModule") return;
@@ -190,6 +201,17 @@ Object.keys(_rtti).forEach(function (key) {
     }
   });
 });
+var _semaphore = require("./semaphore");
+Object.keys(_semaphore).forEach(function (key) {
+  if (key === "default" || key === "__esModule") return;
+  if (key in exports && exports[key] === _semaphore[key]) return;
+  Object.defineProperty(exports, key, {
+    enumerable: true,
+    get: function () {
+      return _semaphore[key];
+    }
+  });
+});
 var _spawnAsync = require("./spawnAsync");
 Object.keys(_spawnAsync).forEach(function (key) {
   if (key === "default" || key === "__esModule") return;
@@ -267,6 +289,17 @@ Object.keys(_userAgent).forEach(function (key) {
     }
   });
 });
+var _wsServer = require("./wsServer");
+Object.keys(_wsServer).forEach(function (key) {
+  if (key === "default" || key === "__esModule") return;
+  if (key in exports && exports[key] === _wsServer[key]) return;
+  Object.defineProperty(exports, key, {
+    enumerable: true,
+    get: function () {
+      return _wsServer[key];
+    }
+  });
+});
 var _zipFile = require("./zipFile");
 Object.keys(_zipFile).forEach(function (key) {
   if (key === "default" || key === "__esModule") return;
@@ -297,6 +330,17 @@ Object.keys(_locatorGenerators).forEach(function (key) {
     enumerable: true,
     get: function () {
       return _locatorGenerators[key];
+    }
+  });
+});
+var _stringUtils = require("./isomorphic/stringUtils");
+Object.keys(_stringUtils).forEach(function (key) {
+  if (key === "default" || key === "__esModule") return;
+  if (key in exports && exports[key] === _stringUtils[key]) return;
+  Object.defineProperty(exports, key, {
+    enumerable: true,
+    get: function () {
+      return _stringUtils[key];
     }
   });
 });

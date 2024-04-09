@@ -3,7 +3,12 @@
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
-exports.default = void 0;
+Object.defineProperty(exports, "program", {
+  enumerable: true,
+  get: function () {
+    return _utilsBundle.program;
+  }
+});
 var _fs = _interopRequireDefault(require("fs"));
 var _os = _interopRequireDefault(require("os"));
 var _path = _interopRequireDefault(require("path"));
@@ -14,8 +19,9 @@ var playwright = _interopRequireWildcard(require("../.."));
 var _child_process = require("child_process");
 var _utils = require("../utils");
 var _server = require("../server");
-function _getRequireWildcardCache(nodeInterop) { if (typeof WeakMap !== "function") return null; var cacheBabelInterop = new WeakMap(); var cacheNodeInterop = new WeakMap(); return (_getRequireWildcardCache = function (nodeInterop) { return nodeInterop ? cacheNodeInterop : cacheBabelInterop; })(nodeInterop); }
-function _interopRequireWildcard(obj, nodeInterop) { if (!nodeInterop && obj && obj.__esModule) { return obj; } if (obj === null || typeof obj !== "object" && typeof obj !== "function") { return { default: obj }; } var cache = _getRequireWildcardCache(nodeInterop); if (cache && cache.has(obj)) { return cache.get(obj); } var newObj = {}; var hasPropertyDescriptor = Object.defineProperty && Object.getOwnPropertyDescriptor; for (var key in obj) { if (key !== "default" && Object.prototype.hasOwnProperty.call(obj, key)) { var desc = hasPropertyDescriptor ? Object.getOwnPropertyDescriptor(obj, key) : null; if (desc && (desc.get || desc.set)) { Object.defineProperty(newObj, key, desc); } else { newObj[key] = obj[key]; } } } newObj.default = obj; if (cache) { cache.set(obj, newObj); } return newObj; }
+var _errors = require("../client/errors");
+function _getRequireWildcardCache(e) { if ("function" != typeof WeakMap) return null; var r = new WeakMap(), t = new WeakMap(); return (_getRequireWildcardCache = function (e) { return e ? t : r; })(e); }
+function _interopRequireWildcard(e, r) { if (!r && e && e.__esModule) return e; if (null === e || "object" != typeof e && "function" != typeof e) return { default: e }; var t = _getRequireWildcardCache(r); if (t && t.has(e)) return t.get(e); var n = { __proto__: null }, a = Object.defineProperty && Object.getOwnPropertyDescriptor; for (var u in e) if ("default" !== u && Object.prototype.hasOwnProperty.call(e, u)) { var i = a ? Object.getOwnPropertyDescriptor(e, u) : null; i && (i.get || i.set) ? Object.defineProperty(n, u, i) : n[u] = e[u]; } return n.default = e, t && t.set(e, n), n; }
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 /**
  * Copyright (c) Microsoft Corporation.
@@ -50,7 +56,7 @@ Examples:
 
   $ open
   $ open -b webkit https://example.com`);
-commandWithOpenOptions('codegen [url]', 'open page and generate code for user actions', [['-o, --output <file name>', 'saves the generated script to a file'], ['--target <language>', `language to generate, one of javascript, playwright-test, python, python-async, python-pytest, csharp, csharp-mstest, csharp-nunit, java`, codegenId()], ['--save-trace <filename>', 'record a trace for the session and save it to a file'], ['--test-id-attribute <attributeName>', 'use the specified attribute to generate data test ID selectors']]).action(function (url, options) {
+commandWithOpenOptions('codegen [url]', 'open page and generate code for user actions', [['-o, --output <file name>', 'saves the generated script to a file'], ['--target <language>', `language to generate, one of javascript, playwright-test, python, python-async, python-pytest, csharp, csharp-mstest, csharp-nunit, java, java-junit`, codegenId()], ['--save-trace <filename>', 'record a trace for the session and save it to a file'], ['--test-id-attribute <attributeName>', 'use the specified attribute to generate data test ID selectors']]).action(function (url, options) {
   codegen(options, url).catch(logErrorAndExit);
 }).addHelpText('afterAll', `
 Examples:
@@ -83,10 +89,7 @@ function checkBrowsersToInstall(args) {
     const executable = _server.registry.findExecutable(arg);
     if (!executable || executable.installType === 'none') faultyArguments.push(arg);else executables.push(executable);
   }
-  if (faultyArguments.length) {
-    console.log(`Invalid installation targets: ${faultyArguments.map(name => `'${name}'`).join(', ')}. Expecting one of: ${suggestedBrowsersToInstall()}`);
-    process.exit(1);
-  }
+  if (faultyArguments.length) throw new Error(`Invalid installation targets: ${faultyArguments.map(name => `'${name}'`).join(', ')}. Expecting one of: ${suggestedBrowsersToInstall()}`);
   return executables;
 }
 _utilsBundle.program.command('install [browser...]').description('ensure browsers necessary for this version of Playwright are installed').option('--with-deps', 'install system dependencies for browsers').option('--dry-run', 'do not execute installation, only print information').option('--force', 'force reinstall of stable browser channels').action(async function (args, options) {
@@ -113,10 +116,14 @@ _utilsBundle.program.command('install [browser...]').description('ensure browser
     } else {
       const forceReinstall = hasNoArguments ? false : !!options.force;
       await _server.registry.install(executables, forceReinstall);
+      await _server.registry.validateHostRequirementsForExecutablesIfNeeded(executables, process.env.PW_LANG_NAME || 'javascript').catch(e => {
+        e.name = 'Playwright Host validation warning';
+        console.error(e);
+      });
     }
   } catch (e) {
     console.log(`Failed to install browsers\n${e}`);
-    process.exit(1);
+    (0, _utils.gracefullyProcessExitDoNotHang)(1);
   }
 }).addHelpText('afterAll', `
 
@@ -126,12 +133,23 @@ Examples:
 
   - $ install chrome firefox
     Install custom browsers, supports ${suggestedBrowsersToInstall()}.`);
+_utilsBundle.program.command('uninstall').description('Removes browsers used by this installation of Playwright from the system (chromium, firefox, webkit, ffmpeg). This does not include branded channels.').option('--all', 'Removes all browsers used by any Playwright installation from the system.').action(async options => {
+  delete process.env.PLAYWRIGHT_SKIP_BROWSER_GC;
+  await _server.registry.uninstall(!!options.all).then(({
+    numberOfBrowsersLeft
+  }) => {
+    if (!options.all && numberOfBrowsersLeft > 0) {
+      console.log('Successfully uninstalled Playwright browsers for the current Playwright installation.');
+      console.log(`There are still ${numberOfBrowsersLeft} browsers left, used by other Playwright installations.\nTo uninstall Playwright browsers for all installations, re-run with --all flag.`);
+    }
+  }).catch(logErrorAndExit);
+});
 _utilsBundle.program.command('install-deps [browser...]').description('install dependencies necessary to run browsers (will ask for sudo permissions)').option('--dry-run', 'Do not execute installation commands, only print them').action(async function (args, options) {
   try {
     if (!args.length) await _server.registry.installDeps(_server.registry.defaultExecutables(), !!options.dryRun);else await _server.registry.installDeps(checkBrowsersToInstall(args), !!options.dryRun);
   } catch (e) {
     console.log(`Failed to install browser dependencies\n${e}`);
-    process.exit(1);
+    (0, _utils.gracefullyProcessExitDoNotHang)(1);
   }
 }).addHelpText('afterAll', `
 Examples:
@@ -187,11 +205,13 @@ _utilsBundle.program.command('run-driver', {
 });
 _utilsBundle.program.command('run-server', {
   hidden: true
-}).option('--port <port>', 'Server port').option('--path <path>', 'Endpoint Path', '/').option('--max-clients <maxClients>', 'Maximum clients').action(function (options) {
+}).option('--port <port>', 'Server port').option('--host <host>', 'Server host').option('--path <path>', 'Endpoint Path', '/').option('--max-clients <maxClients>', 'Maximum clients').option('--mode <mode>', 'Server mode, either "default" or "extension"').action(function (options) {
   (0, _driver.runServer)({
     port: options.port ? +options.port : undefined,
+    host: options.host,
     path: options.path,
-    maxConnections: options.maxClients ? +options.maxClients : Infinity
+    maxConnections: options.maxClients ? +options.maxClients : Infinity,
+    extension: options.mode === 'extension' || !!process.env.PW_EXTENSION_MODE
   }).catch(logErrorAndExit);
 });
 _utilsBundle.program.command('print-api-json', {
@@ -204,15 +224,23 @@ _utilsBundle.program.command('launch-server', {
 }).requiredOption('--browser <browserName>', 'Browser name, one of "chromium", "firefox" or "webkit"').option('--config <path-to-config-file>', 'JSON file with launchServer options').action(function (options) {
   (0, _driver.launchBrowserServer)(options.browser, options.config);
 });
-_utilsBundle.program.command('show-trace [trace...]').option('-b, --browser <browserType>', 'browser to use, one of cr, chromium, ff, firefox, wk, webkit', 'chromium').option('-h, --host <host>', 'Host to serve trace on', 'localhost').option('-p, --port <port>', 'Port to serve trace on', '9322').description('show trace viewer').action(function (traces, options) {
+_utilsBundle.program.command('show-trace [trace...]').option('-b, --browser <browserType>', 'browser to use, one of cr, chromium, ff, firefox, wk, webkit', 'chromium').option('-h, --host <host>', 'Host to serve trace on; specifying this option opens trace in a browser tab').option('-p, --port <port>', 'Port to serve trace on, 0 for any free port; specifying this option opens trace in a browser tab').option('--stdin', 'Accept trace URLs over stdin to update the viewer').description('show trace viewer').action(function (traces, options) {
   if (options.browser === 'cr') options.browser = 'chromium';
   if (options.browser === 'ff') options.browser = 'firefox';
   if (options.browser === 'wk') options.browser = 'webkit';
-  (0, _traceViewer.showTraceViewer)(traces, options.browser, {
+  const openOptions = {
     headless: false,
     host: options.host,
-    port: +options.port
-  }).catch(logErrorAndExit);
+    port: +options.port,
+    isServer: !!options.stdin
+  };
+  if (options.port !== undefined || options.host !== undefined) {
+    (0, _traceViewer.openTraceInBrowser)(traces, openOptions).catch(logErrorAndExit);
+  } else {
+    (0, _traceViewer.openTraceViewerApp)(traces, options.browser, openOptions).then(page => {
+      page.on('close', () => (0, _utils.gracefullyProcessExitDoNotHang)(0));
+    }).catch(logErrorAndExit);
+  }
 }).addHelpText('afterAll', `
 Examples:
 
@@ -273,7 +301,7 @@ async function launchContext(options, headless, executablePath) {
       const hasCrashLine = logs.some(line => line.includes('process did exit:') && !line.includes('process did exit: exitCode=0, signal=null'));
       if (hasCrashLine) {
         process.stderr.write('Detected browser crash.\n');
-        process.exit(1);
+        (0, _utils.gracefullyProcessExitDoNotHang)(1);
       }
     });
   }
@@ -287,8 +315,7 @@ async function launchContext(options, headless, executablePath) {
         height
       };
     } catch (e) {
-      console.log('Invalid window size format: use "width, height", for example --window-size=800,600');
-      process.exit(0);
+      throw new Error('Invalid viewport size format: use "width, height", for example --viewport-size=800,600');
     }
   }
 
@@ -302,8 +329,7 @@ async function launchContext(options, headless, executablePath) {
         longitude
       };
     } catch (e) {
-      console.log('Invalid geolocation format: user lat, long, for example --geolocation="37.819722,-122.478611"');
-      process.exit(0);
+      throw new Error('Invalid geolocation format, should be "lat,long". For example --geolocation="37.819722,-122.478611"');
     }
     contextOptions.permissions = ['geolocation'];
   }
@@ -369,7 +395,7 @@ async function launchContext(options, headless, executablePath) {
   });
   process.on('SIGINT', async () => {
     await closeBrowser();
-    process.exit(130);
+    (0, _utils.gracefullyProcessExitDoNotHang)(130);
   });
   const timeout = options.timeout ? parseInt(options.timeout, 10) : 0;
   context.setDefaultTimeout(timeout);
@@ -397,7 +423,7 @@ async function openPage(context, url) {
   if (url) {
     if (_fs.default.existsSync(url)) url = 'file://' + _path.default.resolve(url);else if (!url.startsWith('http') && !url.startsWith('file://') && !url.startsWith('about:') && !url.startsWith('data:')) url = 'http://' + url;
     await page.goto(url).catch(error => {
-      if (process.env.PWTEST_CLI_AUTO_EXIT_WHEN && error.message.includes('Navigation failed because page was closed')) {
+      if (process.env.PWTEST_CLI_AUTO_EXIT_WHEN && (0, _errors.isTargetClosedError)(error)) {
         // Tests with PWTEST_CLI_AUTO_EXIT_WHEN might close page too fast, resulting
         // in a stray navigation aborted error. We should ignore it.
       } else {
@@ -472,10 +498,7 @@ async function screenshot(options, captureOptions, url, path) {
   await page.close();
 }
 async function pdf(options, captureOptions, url, path) {
-  if (options.browser !== 'chromium') {
-    console.error('PDF creation is only working with Chromium');
-    process.exit(1);
-  }
+  if (options.browser !== 'chromium') throw new Error('PDF creation is only working with Chromium');
   const {
     context
   } = await launchContext({
@@ -524,18 +547,15 @@ function lookupBrowserType(options) {
 }
 function validateOptions(options) {
   if (options.device && !(options.device in playwright.devices)) {
-    console.log(`Device descriptor not found: '${options.device}', available devices are:`);
-    for (const name in playwright.devices) console.log(`  "${name}"`);
-    process.exit(0);
+    const lines = [`Device descriptor not found: '${options.device}', available devices are:`];
+    for (const name in playwright.devices) lines.push(`  "${name}"`);
+    throw new Error(lines.join('\n'));
   }
-  if (options.colorScheme && !['light', 'dark'].includes(options.colorScheme)) {
-    console.log('Invalid color scheme, should be one of "light", "dark"');
-    process.exit(0);
-  }
+  if (options.colorScheme && !['light', 'dark'].includes(options.colorScheme)) throw new Error('Invalid color scheme, should be one of "light", "dark"');
 }
 function logErrorAndExit(e) {
-  console.error(e);
-  process.exit(1);
+  if (process.env.PWDEBUGIMPL) console.error(e);else console.error(e.name + ': ' + e.message);
+  (0, _utils.gracefullyProcessExitDoNotHang)(1);
 }
 function codegenId() {
   return process.env.PW_LANG_NAME || 'playwright-test';
@@ -554,8 +574,9 @@ function buildBasePlaywrightCLICommand(cliTargetLang) {
     case 'csharp':
       return `pwsh bin/Debug/netX/playwright.ps1`;
     default:
-      return `npx playwright`;
+      {
+        const packageManagerCommand = (0, _utils.getPackageManagerExecCommand)();
+        return `${packageManagerCommand} playwright`;
+      }
   }
 }
-var _default = _utilsBundle.program;
-exports.default = _default;
