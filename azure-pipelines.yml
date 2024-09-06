@@ -7,13 +7,13 @@ schedules:
 
 pool:
   vmImage: ubuntu-latest
-container: mcr.microsoft.com/playwright/dotnet:v1.39.0-jammy
+container: mcr.microsoft.com/playwright/dotnet:v1.46.0-jammy
 
 steps:
 - task: UseDotNet@2
   inputs:
     packageType: sdk
-    version: '7.0.x'
+    version: '8.0.x'
   displayName: 'Use .NET SDK'
 
 - script: dotnet build --configuration Release
