@@ -32,6 +32,6 @@ steps:
   inputs:
     testSelector: 'testAssemblies'
     testAssemblyVer2: |
-      bin/Debug/net6.0/SpecFlowWithPlaywright.dll
+      bin/Debug/net8.0/SpecFlowWithPlaywright.dll
     searchFolder: '$(System.DefaultWorkingDirectory)'
     vsTestVersion: 'toolsInstaller'
