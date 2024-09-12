@@ -12,10 +12,10 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Setup dotnet
-        uses: actions/setup-dotnet@v3
+        uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 8.0.x
 
@@ -39,7 +39,7 @@ jobs:
         run: zip -r LivingDoc.zip bin/Debug/net8.0/LivingDoc.html
 
       - name: Upload LivingDoc HTML artifacts
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: LivingDoc HTML
           path: LivingDoc.zip
