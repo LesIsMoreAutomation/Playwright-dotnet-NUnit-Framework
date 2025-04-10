@@ -203,6 +203,13 @@ namespace SpecFlowWithPlaywright.BasePage
             return false;
         }
 
+        public async Task AssertGetByTextIsVisibleAsync(string selector)
+        {
+            await Expect(_page.GetByText(selector)).ToBeVisibleAsync();
+
+
+        }
+
         public async Task AssertTargetUrl(string targetUrl)
         {
             await _page.WaitForURLAsync(targetUrl, new() { Timeout = 60000 });
