@@ -18,7 +18,7 @@ public class SignInPage
       
         public async Task AssertWelcomeBack(string txt)
         {
-            await basePage.AssertElementToHaveText("#main-content > div > div > article > h2",txt);
+            await basePage.AssertGetByTextIsVisibleAsync(txt);
         }
         public async Task EnterEmail(string email)
         {
